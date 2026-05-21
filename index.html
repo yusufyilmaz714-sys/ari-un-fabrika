@@ -580,7 +580,7 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
           <div id="pd_al"></div>
         </div>
         <div id="ps" class="tp">
-          <div class="fr"><label>Alıcı (opsiyonel)</label><input type="text" id="ps_ali" placeholder="Alıcı adı"></div>
+          <div class="fr"><label>Alıcı <span style="color:var(--rd)">*</span></label><input type="text" id="ps_ali" placeholder="Alıcı adı (zorunlu)"></div>
           <div class="fr"><label>Marka</label><input type="text" id="ps_m" placeholder="Ürün markası" oninput="pHes('ps')"></div>
           <div class="fr"><label>Ambalaj (Un)</label><select id="ps_amb" onchange="pHes('ps')"></select></div>
           <div class="fr"><label>Toplam Miktar (Kg)</label><input type="number" id="ps_kg" min="1" step="1" placeholder="0" oninput="pHes('ps')"></div>
@@ -608,13 +608,14 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
     <div class="card">
       <div class="ct">🚚 Sevkiyat</div>
       <div class="tbs">
-        <button class="tb on" onclick="swT('stab','su')">📦 Paketli Un</button>
-        <button class="tb" onclick="swT('stab','sy')">🏭 Yan Mamül</button>
+        <button class="tb on" onclick="swT('stab','su');svPanelGoster('un')">📦 Paketli Un</button>
+        <button class="tb" onclick="swT('stab','sy');svPanelGoster('yan')">🏭 Yan Mamül</button>
       </div>
       <div id="stab">
         <div id="su" class="tp on">
           <div class="fr"><label>Ürün</label><select id="su_urun" onchange="suStok()"></select></div>
           <div class="fr"><label>Adet</label><input type="number" id="su_adet" min="1" step="1" placeholder="0"></div>
+          <div class="fr"><label>Alıcı <span style="color:var(--rd)">*</span></label><input type="text" id="su_ali" placeholder="Alıcı adı (zorunlu)"></div>
           <div id="su_oz" style="font-size:.79rem;color:var(--crm);margin:6px 0"></div>
           <button class="btn bgold" onclick="doSevkUn()">🚚 Sevket</button>
           <div id="su_al"></div>
@@ -633,6 +634,7 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
             </select>
           </div>
           <div class="fr"><label>Miktar (Kg)</label><input type="number" id="sy_kg" min="1" step="1" placeholder="0"></div>
+          <div class="fr"><label>Alıcı <span style="color:var(--rd)">*</span></label><input type="text" id="sy_ali" placeholder="Alıcı adı (zorunlu)"></div>
           <div id="sy_oz" style="font-size:.79rem;color:var(--crm);margin:6px 0"></div>
           <button class="btn bgold" onclick="doSevkYan()">🚚 Sevket</button>
           <div id="sy_al"></div>
@@ -640,10 +642,18 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
       </div>
     </div>
     <div class="card">
-      <div class="ct">📦 Depo Stoku</div>
-      <div class="tw">
-        <table><thead><tr><th>Marka</th><th>Ambalaj</th><th style="text-align:right">Adet</th><th style="text-align:right">Kg</th></tr></thead>
-        <tbody id="SV_depo"></tbody></table>
+      <!-- Paketli Un stok paneli -->
+      <div id="sv_panel_un">
+        <div class="ct">📦 Depodaki Paketli Unlar</div>
+        <div class="tw">
+          <table><thead><tr><th>Marka</th><th>Ambalaj</th><th style="text-align:right">Adet</th><th style="text-align:right">Kg</th></tr></thead>
+          <tbody id="SV_depo"></tbody></table>
+        </div>
+      </div>
+      <!-- Yan Mamül stok paneli -->
+      <div id="sv_panel_yan" style="display:none">
+        <div class="ct">🏪 Yan Mamül Stokları</div>
+        <div class="g3" id="SV_yan"></div>
       </div>
     </div>
   </div>
@@ -1439,7 +1449,10 @@ function rUnSilo(cid){
   if(!marks.length){c.innerHTML='<p style="color:var(--brm);font-size:.81rem">Un silosu boş</p>';return;}
   marks.forEach(function(m){
     var d=document.createElement('div'); d.className='ub';
-    d.innerHTML='<div class="um">'+m+'</div><div class="uk">'+fkg(S.un[m])+'</div>';
+    var kg=S.un[m]; var adet50=Math.floor(kg/50);
+    d.innerHTML='<div class="um">'+m+'</div>'
+      +'<div class="uk">'+fkg(kg)+'</div>'
+      +'<div style="font-size:.65rem;color:var(--brm);margin-top:3px">('+adet50.toLocaleString('tr-TR')+' adet × 50 kg)</div>';
     c.appendChild(d);
   });
 }
@@ -1458,6 +1471,33 @@ function rYan(cid){
     +'<div class="stat"><div class="v">'+fkg(S.rc)+'</div><div class="l">Razmol Çuval/Depo</div></div>'
     +'<div class="stat"><div class="v">'+fkg(S.bk)+'</div><div class="l">Bonkalite</div></div>'
     +'<div class="stat"><div class="v">'+fkg(S.kb)+'</div><div class="l">Kırık Buğday</div></div>';
+}
+
+function svPanelGoster(tip){
+  var panUn=g('sv_panel_un'), panYan=g('sv_panel_yan');
+  if(panUn) panUn.style.display=(tip==='un'?'block':'none');
+  if(panYan) panYan.style.display=(tip==='yan'?'block':'none');
+}
+
+function rSVYan(){
+  var c=g('SV_yan'); if(!c)return;
+  c.innerHTML='';
+  var items=[
+    {lbl:'Kepek Silo',   val:S.ks, renk:'var(--crm)'},
+    {lbl:'Kepek Çuval',  val:S.kc, renk:'var(--crm)'},
+    {lbl:'Razmol Silo',  val:S.rs, renk:'var(--crm)'},
+    {lbl:'Razmol Çuval', val:S.rc, renk:'var(--crm)'},
+    {lbl:'Bonkalite',    val:S.bk, renk:'var(--crm)'},
+    {lbl:'Kırık Buğday', val:S.kb, renk:'var(--crm)'}
+  ];
+  items.forEach(function(it){
+    var d=document.createElement('div');
+    d.className='stat';
+    d.style.opacity=it.val===0?'.45':'1';
+    d.innerHTML='<div class="v" style="font-size:1.1rem">'+fkg(it.val)+'</div>'
+      +'<div class="l">'+it.lbl+'</div>';
+    c.appendChild(d);
+  });
 }
 
 function rDepo(bid){
@@ -1648,6 +1688,7 @@ function rAll(){
   rSilos('AK_silo',false);
   rUnSilo('P_un');
   rDepo('SV_depo');
+  rSVYan();
   rSelects();
   rAmbList();
   rKatList();
@@ -2049,7 +2090,8 @@ function addKat(pfx){
 }
 function doPak(tip){
   var pfx=tip==='depo'?'pd':'ps';
-  var marka=gv(pfx+'_m').trim(), topkg=gn(pfx+'_kg'), alici=tip==='sevk'?(gv(pfx+'_ali')||''):'';
+  var marka=gv(pfx+'_m').trim(), topkg=gn(pfx+'_kg'), alici=tip==='sevk'?(gv(pfx+'_ali')||'').trim():'';
+  if(tip==='sevk'&&!alici){showA(pfx+'_al','Alıcı adı zorunludur!',false);return;}
   var amb=getAmb(pfx);
   if(!marka||!topkg){showA(pfx+'_al','Marka ve miktar gerekli!',false);return;}
   if(!amb){showA(pfx+'_al','Ambalaj seçin! (Ambalaj & Katkı menüsünden önce ambalaj tanımlayın)',false);return;}
@@ -2105,7 +2147,21 @@ function doPak(tip){
   } else {
     S.log.sv.push({id:uid(),t:now(),tip:'Un (Paket)',urun:marka+' / '+amb.ad,miktar:adet+' adet / '+fkg(gercek),alici:alici,x:{marka:marka,aad:amb.ad,akg:akg,adet:adet,ambId:amb.id,kar:kar.map(function(x){return {m:x.m,kg:gercek*x.p/100};})}});
   }
-  S.log.pk.push({id:uid(),t:now(),tip:tip,marka:marka,aad:amb.ad,akg:akg,adet:adet,alici:alici,ambId:amb.id,kar:kar.map(function(x){return {m:x.m,kg:gercek*x.p/100};})});
+  // Katkı bilgisini loga ekle
+  var katKul=[];
+  for(var jjj=0;jjj<krows.length;jjj++){
+    var rowK=krows[jjj];
+    var kidK=rowK.querySelector('.ksec')?rowK.querySelector('.ksec').value:'';
+    var grK=+(rowK.querySelector('.kgr')?rowK.querySelector('.kgr').value:0)||0;
+    if(kidK&&grK){
+      var kObj=S.kat.find(function(x){return x.id===kidK;});
+      if(kObj){
+        var kulKg=grK*(gercek/50)/1000;
+        katKul.push({katId:kidK,katAd:kObj.ad,grPer50kg:grK,kulKg:kulKg});
+      }
+    }
+  }
+  S.log.pk.push({id:uid(),t:now(),tip:tip,marka:marka,aad:amb.ad,akg:akg,adet:adet,alici:alici,ambId:amb.id,kar:kar.map(function(x){return {m:x.m,kg:gercek*x.p/100};}),katKul:katKul});
   g(pfx+'_m').value=''; g(pfx+'_kg').value='';
   if(katC)katC.innerHTML='';
   var oz=g(pfx+'_oz'); if(oz)oz.style.display='none';
@@ -2128,7 +2184,8 @@ function suStok(){
   oz.textContent=st?'Depoda: '+st.adet.toLocaleString('tr-TR')+' adet / '+fkg(st.adet*st.akg):'';
 }
 function doSevkUn(){
-  var alici='', key=gv('su_urun'), adet=gn('su_adet');
+  var alici=(gv('su_ali')||'').trim(), key=gv('su_urun'), adet=gn('su_adet');
+  if(!alici){showA('su_al','Alıcı adı zorunludur!',false);return;}
   if(!key||!adet){showA('su_al','Ürün ve adet gerekli!',false);return;}
   var parts=key.split('||'), marka=parts[0],aad=parts[1],akg=+(parts[2]);
   var kalan=adet;
@@ -2139,6 +2196,8 @@ function doSevkUn(){
   S.depo=S.depo.filter(function(r){return r.adet>0;});
   if(kalan>0){showA('su_al','Depoda yeterli stok yok!',false);return;}
   S.log.sv.push({id:uid(),t:now(),tip:'Un (Depo)',urun:marka+' / '+aad,miktar:adet+' adet / '+fkg(adet*akg),alici:alici,x:{marka:marka,aad:aad,akg:akg,adet:adet}});
+  var suAliEl=g('su_ali'); if(suAliEl)suAliEl.value='';
+  var suAdetEl=g('su_adet'); if(suAdetEl)suAdetEl.value='';
   g('su_adet').value='';
   sv(); showA('su_al','Sevkiyat kaydedildi!',true); rAll();
 }
@@ -2148,7 +2207,8 @@ function syStok(){
   el.textContent=(v&&mp[v]!==undefined)?'Mevcut: '+fkg(mp[v]):'';
 }
 function doSevkYan(){
-  var alici='', uk=gv('sy_urun'), kg=gn('sy_kg');
+  var alici=(gv('sy_ali')||'').trim(), uk=gv('sy_urun'), kg=gn('sy_kg');
+  if(!alici){showA('sy_al','Alıcı adı zorunludur!',false);return;}
   if(!uk||!kg){showA('sy_al','Ürün ve miktar gerekli!',false);return;}
   var sm={kepek_silo:'ks',kepek_cuval:'kc',razmol_silo:'rs',razmol_cuval:'rc',bonkalite:'bk',kirik:'kb'};
   var sk=sm[uk];
@@ -2156,6 +2216,8 @@ function doSevkYan(){
   S[sk]-=kg;
   var ad={kepek_silo:'Kepek (Silodan)',kepek_cuval:'Kepek (Çuval)',razmol_silo:'Razmol (Silodan)',razmol_cuval:'Razmol (Çuval)',bonkalite:'Bonkalite',kirik:'Kırık Buğday'};
   S.log.sv.push({id:uid(),t:now(),tip:'Yan Mamül',urun:ad[uk],miktar:fkg(kg),alici:alici,x:{stokKey:sm[uk],kg:kg}});
+  var syAliEl=g('sy_ali'); if(syAliEl)syAliEl.value='';
+  var syKgEl=g('sy_kg'); if(syKgEl)syKgEl.value='';
   g('sy_kg').value='';
   sv(); showA('sy_al','Sevkiyat kaydedildi!',true); rAll();
 }
@@ -2888,211 +2950,278 @@ function hrkOzet(){
 
 function printHareketRapor(){
   var bas=gv('hrk_bas'), bit=gv('hrk_bit');
-  var sa=hrkTarihFiltre(S.log.sa,bas,bit);
-  var bd=hrkTarihFiltre(S.log.bd,bas,bit);
-  var ak=hrkTarihFiltre(S.log.ak,bas,bit);
-  var ur=hrkTarihFiltre(S.log.ur,bas,bit);
-  var pk=hrkTarihFiltre(S.log.pk,bas,bit);
-  var sv=hrkTarihFiltre(S.log.sv,bas,bit);
-  var top=sa.length+bd.length+ak.length+ur.length+pk.length+sv.length;
+  var sa =hrkTarihFiltre(S.log.sa, bas, bit);
+  var bd =hrkTarihFiltre(S.log.bd, bas, bit);
+  var ur =hrkTarihFiltre(S.log.ur, bas, bit);
+  var pk =hrkTarihFiltre(S.log.pk, bas, bit);
+  var sv =hrkTarihFiltre(S.log.sv, bas, bit);
+  var top=sa.length+bd.length+ur.length+pk.length+sv.length;
   if(!top){ alert('Bu tarih aralığında kayıt bulunamadı.'); return; }
 
   var now2=new Date();
   var tarihStr=now2.toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  var saatStr=now2.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
-  var aralik=bas===bit?(bas||'Tüm Kayıtlar'):(bas||'Başlangıç')+' → '+(bit||'Bugün');
+  var saatStr =now2.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+  var aralik  =bas===bit?(bas||'Tüm Kayıtlar'):(bas||'Başlangıç')+' → '+(bit||'Bugün');
 
-  // ── GİRİŞ / ÇIKIŞ hesapla ────────────────────────
-  // Ürün bazında giriş çıkış takibi
-  var giris={bugday:0,un:0,kepek:0,razmol:0,bonkalite:0,kirik:0,ambalaj:0,katki:0};
-  var cikis={bugday:0,un:0,kepek:0,razmol:0,bonkalite:0,kirik:0,ambalaj:0,katki:0};
-  var girisDetay=[]; // {urun, miktar, kaynak, t}
-  var cikisDetay=[]; // {urun, miktar, kaynak, t}
+  // ── 1. BUĞDAY SİLOLARINA GİRİŞ ──────────────────────
+  // Sadece gerçek giriş (düzeltme değil)
+  var bdGirisler=bd.filter(function(r){return !r.not||r.not.indexOf('[Düzeltme]')<0;});
+  var bdTopKg=0;
+  var bdRows=bdGirisler.map(function(r){
+    bdTopKg+=r.kg||0;
+    return '<tr><td>'+r.t+'</td><td>'+r.hedef+'</td><td class="r g">'+fkg(r.kg)+'</td><td style="color:#888">'+( r.not||'—')+'</td></tr>';
+  }).join('');
 
-  // Satın Alma → GİRİŞ
-  sa.forEach(function(r){
-    var x=r.x||{}, kg=x.kg||0;
-    var adet=x.adet||0;
-    if(r.kat==='Buğday')       { giris.bugday+=kg;   girisDetay.push({t:r.t,urun:'Buğday',detay:r.urun,miktar:fkg(kg),kaynak:'Satın Alma'}); }
-    else if(r.kat==='Un')      { giris.un+=kg;        girisDetay.push({t:r.t,urun:'Un',detay:r.urun,miktar:fkg(kg),kaynak:'Satın Alma'}); }
-    else if(r.kat==='Kepek')   { giris.kepek+=kg;     girisDetay.push({t:r.t,urun:'Kepek',detay:r.urun,miktar:fkg(kg),kaynak:'Satın Alma'}); }
-    else if(r.kat==='Razmol')  { giris.razmol+=kg;    girisDetay.push({t:r.t,urun:'Razmol',detay:r.urun,miktar:fkg(kg),kaynak:'Satın Alma'}); }
-    else if(r.kat==='Bonkalite'){giris.bonkalite+=kg;  girisDetay.push({t:r.t,urun:'Bonkalite',detay:r.urun,miktar:fkg(kg),kaynak:'Satın Alma'}); }
-    else if(r.kat==='Kırık Buğday'){giris.kirik+=kg;  girisDetay.push({t:r.t,urun:'Kırık Buğday',detay:r.urun,miktar:fkg(kg),kaynak:'Satın Alma'}); }
-    else if(r.kat==='Ambalaj') { giris.ambalaj+=adet; girisDetay.push({t:r.t,urun:'Ambalaj',detay:r.urun,miktar:adet+' adet',kaynak:'Satın Alma'}); }
-    else if(r.kat==='Katkı')   { giris.katki+=kg;     girisDetay.push({t:r.t,urun:'Katkı',detay:r.urun,miktar:fkg(kg),kaynak:'Satın Alma'}); }
-  });
-
-  // Buğday Girişi → GİRİŞ
-  bd.forEach(function(r){
-    if(r.not&&r.not.indexOf('[Düzeltme]')>=0) return; // düzeltme kayıtları ayrı
-    giris.bugday+=r.kg||0;
-    girisDetay.push({t:r.t,urun:'Buğday',detay:r.hedef+' Silosu',miktar:fkg(r.kg),kaynak:'Buğday Girişi'});
-  });
-
-  // Üretim → Un/Kepek/Razmol/Bonkalite/Kırık GİRİŞ + Buğday ÇIKIŞ
-  ur.forEach(function(r){
-    // Buğday çıkışı
-    cikis.bugday+=r.bkg||0;
-    cikisDetay.push({t:r.t,urun:'Buğday',detay:'Üretime Giren ('+r.parti+')',miktar:fkg(r.bkg),kaynak:'Üretim'});
-    // Çıktılar giriş
-    var u1=r.u1k||0, u2=r.u2k||0;
-    if(u1+u2>0){
-      giris.un+=u1+u2;
-      girisDetay.push({t:r.t,urun:'Un',detay:(r.u1m?r.u1m+':'+fkg(u1):'')+(r.u2m?' / '+r.u2m+':'+fkg(u2):'')+'('+r.parti+')',miktar:fkg(u1+u2),kaynak:'Üretim'});
-    }
-    var kep=(r.ks||0)+(r.kc||0);
-    if(kep>0){ giris.kepek+=kep; girisDetay.push({t:r.t,urun:'Kepek',detay:r.parti,miktar:fkg(kep),kaynak:'Üretim'}); }
-    var raz=(r.rs||0)+(r.rc||0);
-    if(raz>0){ giris.razmol+=raz; girisDetay.push({t:r.t,urun:'Razmol',detay:r.parti,miktar:fkg(raz),kaynak:'Üretim'}); }
-    if(r.bk>0){ giris.bonkalite+=r.bk; girisDetay.push({t:r.t,urun:'Bonkalite',detay:r.parti,miktar:fkg(r.bk),kaynak:'Üretim'}); }
-    if(r.kb>0){ giris.kirik+=r.kb; girisDetay.push({t:r.t,urun:'Kırık Buğday',detay:r.parti,miktar:fkg(r.kb),kaynak:'Üretim'}); }
-  });
-
-  // Paketleme Depoya → Un ÇIKIŞ, Ambalaj ÇIKIŞ, Depo GİRİŞ
+  // ── 2. UN SİLOSUNDAN ÇIKIŞ ───────────────────────────
+  // Üretimde kullanılan buğday → silo çıkışı değil
+  // Un silondan çıkış: paketleme sırasında un silosundan alınan miktar
+  var unCikislar=[];
+  var unCikisTopKg=0;
   pk.forEach(function(r){
-    if(r.tip==='depo'){
-      var kgTot=r.adet*(r.akg||0);
-      cikis.un+=kgTot;
-      cikisDetay.push({t:r.t,urun:'Un',detay:r.marka+' / '+r.aad+' (Depoya)',miktar:r.adet+' adet / '+fkg(kgTot),kaynak:'Paketleme'});
-      cikis.ambalaj+=r.adet;
-      cikisDetay.push({t:r.t,urun:'Ambalaj',detay:r.aad,miktar:r.adet+' adet',kaynak:'Paketleme'});
-      girisDetay.push({t:r.t,urun:'Depo (Paketli Un)',detay:r.marka+' '+r.aad,miktar:r.adet+' adet / '+fkg(kgTot),kaynak:'Paketleme'});
-    } else {
-      // Direkt sevk
-      var kgTot2=r.adet*(r.akg||0);
-      cikis.un+=kgTot2;
-      cikisDetay.push({t:r.t,urun:'Un',detay:r.marka+' '+r.aad+' (Direkt Sevk)',miktar:r.adet+' adet / '+fkg(kgTot2),kaynak:'Paketleme+Sevk'});
-      cikis.ambalaj+=r.adet;
-      cikisDetay.push({t:r.t,urun:'Ambalaj',detay:r.aad,miktar:r.adet+' adet',kaynak:'Paketleme+Sevk'});
-    }
+    var kgTot=r.adet*(r.akg||0);
+    unCikisTopKg+=kgTot;
+    unCikislar.push({t:r.t, marka:r.marka, aad:r.aad, adet:r.adet, kg:kgTot,
+      tip:r.tip==='depo'?'Depoya Alındı':'Direkt Sevk', alici:r.alici||'—'});
   });
+  var unCikisRows=unCikislar.map(function(d){
+    return '<tr><td>'+d.t+'</td><td>'+d.marka+'</td><td>'+d.aad+'</td>'
+      +'<td class="r">'+d.adet.toLocaleString('tr-TR')+' adet</td>'
+      +'<td class="r c">'+fkg(d.kg)+'</td>'
+      +'<td><span style="font-size:7.5pt;background:#EDE0C0;color:#5C3D1E;padding:1px 5px;border-radius:8px">'+d.tip+'</span></td>'
+      +'<td>'+d.alici+'</td>'
+      +'</tr>';
+  }).join('');
 
-  // Sevkiyat → ÇIKIŞ
+  // ── 3. PAKETLİ UN DEPODAN ÇIKIŞ ─────────────────────
+  // Sevkiyat — Un (Depo) tipi
+  var depoCikislar=[];
+  var depoCikisTopKg=0;
   sv.forEach(function(r){
+    if(r.tip!=='Un (Depo)')return;
     var x=r.x||{};
-    if(r.tip==='Un (Depo)'){
-      var adet=x.adet||0, akg=x.akg||0;
-      cikis.un+=adet*akg;
-      cikisDetay.push({t:r.t,urun:'Depo (Paketli Un)',detay:r.urun+(r.alici?' → '+r.alici:''),miktar:r.miktar,kaynak:'Sevkiyat'});
-    } else if(r.tip==='Un (Paket)'){
-      var adet2=x.adet||0, akg2=x.akg||0;
-      cikis.un+=adet2*akg2;
-      cikisDetay.push({t:r.t,urun:'Un',detay:r.urun,miktar:r.miktar,kaynak:'Sevkiyat'});
-    } else if(r.tip==='Yan Mamül'){
-      var kg=x.kg||parseFloat((r.miktar||'').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,''))||0;
-      var urn=r.urun||'';
-      if(urn.indexOf('Kepek')>=0)   { cikis.kepek+=kg;    cikisDetay.push({t:r.t,urun:'Kepek',detay:urn+(r.alici?' → '+r.alici:''),miktar:fkg(kg),kaynak:'Sevkiyat'}); }
-      else if(urn.indexOf('Razmol')>=0){ cikis.razmol+=kg; cikisDetay.push({t:r.t,urun:'Razmol',detay:urn+(r.alici?' → '+r.alici:''),miktar:fkg(kg),kaynak:'Sevkiyat'}); }
-      else if(urn.indexOf('Bonkalite')>=0){cikis.bonkalite+=kg; cikisDetay.push({t:r.t,urun:'Bonkalite',detay:urn,miktar:fkg(kg),kaynak:'Sevkiyat'}); }
-      else if(urn.indexOf('Kırık')>=0){cikis.kirik+=kg;   cikisDetay.push({t:r.t,urun:'Kırık Buğday',detay:urn,miktar:fkg(kg),kaynak:'Sevkiyat'}); }
+    var adet=x.adet||0, akg=x.akg||0;
+    depoCikisTopKg+=adet*akg;
+    depoCikislar.push({t:r.t, urun:r.urun, miktar:r.miktar, alici:r.alici||'—'});
+  });
+  var depoCikisRows=depoCikislar.map(function(d){
+    return '<tr><td>'+d.t+'</td><td>'+d.urun+'</td><td class="r c">'+d.miktar+'</td><td>'+d.alici+'</td></tr>';
+  }).join('');
+
+  // ── 4. KULLANILAN AMBALAJ ────────────────────────────
+  var ambMap={};   // aad → adet
+  var ambTopAdet=0;
+  pk.forEach(function(r){
+    var k=r.aad||'Bilinmeyen';
+    if(!ambMap[k])ambMap[k]=0;
+    ambMap[k]+=r.adet||0;
+    ambTopAdet+=r.adet||0;
+  });
+  var ambRows=Object.keys(ambMap).map(function(ad){
+    return '<tr><td>'+ad+'</td><td class="r c">'+ambMap[ad].toLocaleString('tr-TR')+' adet</td></tr>';
+  }).join('');
+
+  // ── 5. KULLANILAN KATKI (paketleme sırasında harcanan) ──────
+  var katMap={}; // katAd → {topKulKg, satirlar}
+  var katTopKg=0;
+  pk.forEach(function(r){
+    if(!r.katKul||!r.katKul.length)return;
+    r.katKul.forEach(function(k){
+      if(!katMap[k.katAd])katMap[k.katAd]={katAd:k.katAd,topKulKg:0,satirlar:[]};
+      katMap[k.katAd].topKulKg+=k.kulKg||0;
+      katTopKg+=k.kulKg||0;
+      katMap[k.katAd].satirlar.push({
+        t:r.t,marka:r.marka,aad:r.aad,adet:r.adet,
+        grPer50kg:k.grPer50kg,kulKg:k.kulKg
+      });
+    });
+  });
+  var katRows='';
+  if(Object.keys(katMap).length){
+    Object.values(katMap).forEach(function(km){
+      km.satirlar.forEach(function(s){
+        katRows+='<tr>'
+          +'<td>'+s.t+'</td>'
+          +'<td><b>'+km.katAd+'</b></td>'
+          +'<td>'+s.marka+' / '+s.aad+'</td>'
+          +'<td class="r">'+s.adet.toLocaleString('tr-TR')+' adet</td>'
+          +'<td class="r">'+s.grPer50kg+' gr/50kg</td>'
+          +'<td class="r c">'+s.kulKg.toFixed(3)+' Kg</td>'
+          +'</tr>';
+      });
+      katRows+='<tr style="background:#FFF8E1"><td colspan="5" style="text-align:right;font-style:italic;color:#7A5230">'+km.katAd+' toplam:</td>'
+        +'<td class="r c" style="font-weight:700">'+km.topKulKg.toFixed(3)+' Kg</td></tr>';
+    });
+  }
+
+  // ── 6. YAN MAMÜL ÇIKIŞLARI ──────────────────────────
+  var yanAdlar={
+    ks:'Kepek (Silo)', kc:'Kepek (Çuval/Depo)',
+    rs:'Razmol (Silo)', rc:'Razmol (Çuval/Depo)',
+    bk:'Bonkalite', kb:'Kırık Buğday'
+  };
+  // Yan mamül kategorilerine göre grupla
+  var yanMap={}; // stokKey → {ad, topKg, satirlar}
+  var yanTopKg=0;
+  sv.forEach(function(r){
+    if(r.tip!=='Yan Mamül')return;
+    var x=r.x||{};
+    var sk=x.stokKey||'';
+    var kg=x.kg||0;
+    var ad=yanAdlar[sk]||r.urun||sk;
+    if(!yanMap[sk])yanMap[sk]={ad:ad,topKg:0,satirlar:[]};
+    yanMap[sk].topKg+=kg;
+    yanTopKg+=kg;
+    yanMap[sk].satirlar.push({t:r.t,kg:kg,alici:r.alici||'—'});
+  });
+  // Detay satırları + her ürün grubu için ara toplam
+  var hrkYanRows='';
+  Object.values(yanMap).forEach(function(ym){
+    ym.satirlar.forEach(function(s){
+      hrkYanRows+='<tr>'
+        +'<td style="white-space:nowrap;font-size:8pt">'+s.t+'</td>'
+        +'<td><b>'+ym.ad+'</b></td>'
+        +'<td class="r c">'+fkg(s.kg)+'</td>'
+        +'<td>'+s.alici+'</td>'
+        +'</tr>';
+    });
+    // Birden fazla satır varsa ara toplam ekle
+    if(ym.satirlar.length>1){
+      hrkYanRows+='<tr style="background:#FFF8E1">'
+        +'<td colspan="2" style="font-style:italic;color:#7A5230;padding-left:20px">↳ '+ym.ad+' toplam</td>'
+        +'<td class="r c" style="font-weight:700">'+fkg(ym.topKg)+'</td>'
+        +'<td></td></tr>';
     }
   });
 
-  // ── CSS ─────────────────────────────────────────
+  // ── 7. SATIN ALIMLAR ────────────────────────────────
+  // Düzenleme kayıtlarını çıkar
+  var saGercek=sa.filter(function(r){return r.kat!=='Düzenleme';});
+  var saRows=saGercek.map(function(r){
+    return '<tr><td>'+r.t+'</td>'
+      +'<td><span style="font-size:7.5pt;background:#EDE0C0;color:#5C3D1E;padding:1px 5px;border-radius:8px">'+r.kat+'</span></td>'
+      +'<td>'+r.urun+'</td>'
+      +'<td class="r g">'+r.miktar+'</td>'
+      +'<td style="color:#888;font-size:8pt">'+(r.not||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  // ── CSS ─────────────────────────────────────────────
   var css='*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:Arial,sans-serif;color:#1a1a1a;font-size:9.5pt;background:#fff}'
+    +'body{font-family:Arial,sans-serif;color:#1a1a1a;font-size:9pt;background:#fff}'
     +'.rh{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #5C3D1E;padding-bottom:10px;margin-bottom:14px}'
     +'.rlogo{font-size:15pt;font-weight:700;color:#5C3D1E}'
     +'.rlogo small{display:block;font-size:7.5pt;color:#7A5230;font-weight:400;margin-top:2px}'
     +'.rmeta{text-align:right;font-size:8pt;color:#555}'
     +'.rmeta .rt{font-size:12pt;font-weight:700;color:#5C3D1E}'
-    +'.ozet{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}'
-    +'.oz-kart{border:1.5px solid #C9A84C;border-radius:5px;overflow:hidden}'
-    +'.oz-baslik{background:#5C3D1E;color:#E2C97E;font-size:9pt;font-weight:700;padding:5px 10px;letter-spacing:.3px}'
-    +'.oz-baslik.giris{background:#1e8449}'
-    +'.oz-baslik.cikis{background:#922b21}'
-    +'.oz-icerik{padding:8px 10px}'
-    +'.oz-satir{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0ece4;font-size:8.5pt}'
-    +'.oz-satir:last-child{border:none}'
-    +'.oz-satir .urun{color:#555;font-weight:600}'
-    +'.oz-satir .mik{font-weight:700;color:#1a1a1a}'
-    +'.oz-satir .kaynak{font-size:7pt;color:#999;font-style:italic}'
-    +'.bolum{margin-bottom:12px;break-inside:avoid}'
-    +'.bb{display:flex;align-items:center;gap:8px;font-size:9pt;font-weight:700;padding:5px 10px}'
-    +'.bb.giris-bb{background:#1e8449;color:#fff;border-radius:4px 4px 0 0}'
-    +'.bb.cikis-bb{background:#922b21;color:#fff;border-radius:4px 4px 0 0}'
+    +'.ozbar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}'
+    +'.ok{border:1.5px solid #C9A84C;border-radius:4px;padding:8px;text-align:center}'
+    +'.okv{font-size:14pt;font-weight:700;color:#5C3D1E}'
+    +'.okl{font-size:7pt;color:#7A5230;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}'
+    +'.bolum{margin-bottom:14px;break-inside:avoid}'
+    +'.bb{font-size:9pt;font-weight:700;padding:5px 10px;color:#fff;display:flex;align-items:center;gap:6px}'
+    +'.bb-giris{background:#1e8449}'
+    +'.bb-cikis{background:#922b21}'
+    +'.bb-amb{background:#1a5276}'
+    +'.bb-kat{background:#5C3D1E}'
+    +'.bb-sa{background:#7d6608}'
+    +'.sayi{background:rgba(255,255,255,.25);border-radius:8px;padding:0 7px;font-size:8pt}'
     +'table{width:100%;border-collapse:collapse;font-size:8.5pt}'
     +'thead th{background:#EDE0C0;color:#5C3D1E;text-align:left;padding:4px 8px;font-weight:700;border:1px solid #C9A84C}'
     +'thead th.r{text-align:right}'
     +'tbody td{padding:4px 8px;border:1px solid #ddd}'
     +'tbody tr:nth-child(even){background:#FDFAF3}'
     +'tbody td.r{text-align:right;font-weight:700}'
-    +'.g-renk{color:#1e8449;font-weight:700}'
-    +'.c-renk{color:#922b21;font-weight:700}'
-    +'.kaynak-bdg{font-size:7pt;background:#EDE0C0;color:#5C3D1E;padding:1px 5px;border-radius:8px}'
+    +'.g{color:#1e8449;font-weight:700}'
+    +'.c{color:#922b21;font-weight:700}'
+    +'.tot td{background:#F5EDD6;font-weight:700;border-top:2px solid #C9A84C}'
+    +'.bos{padding:8px;color:#aaa;font-style:italic;font-size:8.5pt;border:1px solid #ddd;border-top:none}'
     +'.imza{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:18px;padding-top:12px;border-top:1px solid #C9A84C}'
     +'.iz{text-align:center;font-size:8pt;color:#555}'
     +'.izc{border-top:1px solid #1a1a1a;margin-bottom:4px;margin-top:24px}'
     +'.footer{text-align:center;font-size:7pt;color:#aaa;margin-top:10px;padding-top:6px;border-top:1px solid #eee}'
     +'@media print{@page{size:A4 portrait;margin:10mm 12mm}}';
 
-  // ── ÖZET KARTLAR ─────────────────────────────────
-  function ozSatir(urun,kg,kaynak){
-    if(!kg) return '';
-    return '<div class="oz-satir"><span class="urun">'+urun+'</span><span><span class="mik">'+fkg(kg)+'</span></span></div>';
-  }
-  var girisOzet=''
-    +ozSatir('Buğday',giris.bugday)
-    +ozSatir('Un',giris.un)
-    +ozSatir('Kepek',giris.kepek)
-    +ozSatir('Razmol',giris.razmol)
-    +ozSatir('Bonkalite',giris.bonkalite)
-    +ozSatir('Kırık Buğday',giris.kirik)
-    +(giris.ambalaj?'<div class="oz-satir"><span class="urun">Ambalaj</span><span class="mik">'+giris.ambalaj.toLocaleString('tr-TR')+' adet</span></div>':'')
-    +ozSatir('Katkı',giris.katki);
-  var cikisOzet=''
-    +ozSatir('Buğday',cikis.bugday)
-    +ozSatir('Un',cikis.un)
-    +ozSatir('Kepek',cikis.kepek)
-    +ozSatir('Razmol',cikis.razmol)
-    +ozSatir('Bonkalite',cikis.bonkalite)
-    +ozSatir('Kırık Buğday',cikis.kirik)
-    +(cikis.ambalaj?'<div class="oz-satir"><span class="urun">Ambalaj</span><span class="mik">'+cikis.ambalaj.toLocaleString('tr-TR')+' adet</span></div>':'');
-
-  // ── DETAY TABLOLARI ──────────────────────────────
-  function detayTablosu(liste,renk){
-    if(!liste.length) return '<p style="padding:8px;color:#aaa;font-style:italic">Bu dönemde kayıt yok.</p>';
-    return '<table><thead><tr><th>Tarih/Saat</th><th>Ürün</th><th>Detay</th><th>Kaynak</th><th class="r">Miktar</th></tr></thead><tbody>'
-      +liste.map(function(d){
-        return '<tr><td style="white-space:nowrap;font-size:7.5pt">'+d.t+'</td>'
-          +'<td style="font-weight:700">'+d.urun+'</td>'
-          +'<td style="font-size:8pt;color:#555">'+d.detay+'</td>'
-          +'<td><span class="kaynak-bdg">'+d.kaynak+'</span></td>'
-          +'<td class="r '+(renk==='giris'?'g-renk':'c-renk')+'">'+d.miktar+'</td></tr>';
-      }).join('')
-      +'</tbody></table>';
+  // ── HTML ─────────────────────────────────────────────
+  function bolum(renkCls, ikon, baslik, sayi, tabloHtml, bosMsg){
+    return '<div class="bolum">'
+      +'<div class="bb '+renkCls+'">'+ikon+' '+baslik+' <span class="sayi">'+sayi+'</span></div>'
+      +(tabloHtml
+        ? tabloHtml
+        : '<div class="bos">'+(bosMsg||'Bu dönemde kayıt yok.')+'</div>')
+      +'</div>';
   }
 
-  // ── HTML ────────────────────────────────────────
-  var html='<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Hareket Raporu — '+aralik+'</title><style>'+css+'</style></head><body>'
+  var html='<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">'
+    +'<title>Hareket Raporu — '+aralik+'</title>'
+    +'<style>'+css+'</style></head><body>'
+
+    // Başlık
     +'<div class="rh">'
       +'<div class="rlogo">🌾 Arı Un Fabrikası<small>San. Tic. A.Ş. — Hareket Raporu</small></div>'
-      +'<div class="rmeta"><div class="rt">'+aralik+'</div><div>Oluşturma: '+tarihStr+' '+saatStr+'</div></div>'
+      +'<div class="rmeta"><div class="rt">'+aralik+'</div><div>'+tarihStr+' '+saatStr+'</div></div>'
     +'</div>'
 
-    // Özet: Giriş / Çıkış yan yana
-    +'<div class="ozet">'
-      +'<div class="oz-kart">'
-        +'<div class="oz-baslik giris">📥 DÖNEM GİRİŞLERİ</div>'
-        +'<div class="oz-icerik">'+(girisOzet||'<p style="color:#aaa;font-size:8pt;padding:4px">Giriş yok</p>')+'</div>'
-      +'</div>'
-      +'<div class="oz-kart">'
-        +'<div class="oz-baslik cikis">📤 DÖNEM ÇIKIŞLARI</div>'
-        +'<div class="oz-icerik">'+(cikisOzet||'<p style="color:#aaa;font-size:8pt;padding:4px">Çıkış yok</p>')+'</div>'
-      +'</div>'
+    // Özet bar
+    +'<div class="ozbar">'
+      +'<div class="ok"><div class="okv g">'+fkg(bdTopKg)+'</div><div class="okl">Buğday Girişi</div></div>'
+      +'<div class="ok"><div class="okv c">'+fkg(unCikisTopKg)+'</div><div class="okl">Un Silodan Çıkış</div></div>'
+      +'<div class="ok"><div class="okv c">'+fkg(depoCikisTopKg)+'</div><div class="okl">Depodan Sevkiyat</div></div>'
+      +'<div class="ok"><div class="okv c">'+ambTopAdet.toLocaleString('tr-TR')+' adet</div><div class="okl">Kullanılan Ambalaj</div></div>'
+      +'<div class="ok"><div class="okv">'+katTopKg.toFixed(3)+' Kg</div><div class="okl">Kullanılan Katkı</div></div>'
+      +'<div class="ok"><div class="okv c">'+fkg(yanTopKg)+'</div><div class="okl">Yan Mamül Çıkış</div></div>'
+      +'<div class="ok"><div class="okv">'+saGercek.length+' kalem</div><div class="okl">Satın Alım</div></div>'
     +'</div>'
 
-    // Giriş detayları
-    +(girisDetay.length?
-      '<div class="bolum"><div class="bb giris-bb">📥 Giriş Detayları <span style="background:rgba(255,255,255,.2);border-radius:8px;padding:1px 8px;font-size:8pt">'+girisDetay.length+'</span></div>'
-      +detayTablosu(girisDetay,'giris')+'</div>':'')
+    // 1. Buğday silolarına giriş
+    +bolum('bb-giris','🌾','Buğday Silolarına Giriş',bdGirisler.length,
+      bdGirisler.length?
+        '<table><thead><tr><th>Tarih/Saat</th><th>Silo</th><th class="r">Miktar</th><th>Not</th></tr></thead><tbody>'
+        +bdRows+'<tr class="tot"><td colspan="2">TOPLAM</td><td class="r g">'+fkg(bdTopKg)+'</td><td></td></tr>'
+        +'</tbody></table>':null)
 
-    // Çıkış detayları
-    +(cikisDetay.length?
-      '<div class="bolum"><div class="bb cikis-bb">📤 Çıkış Detayları <span style="background:rgba(255,255,255,.2);border-radius:8px;padding:1px 8px;font-size:8pt">'+cikisDetay.length+'</span></div>'
-      +detayTablosu(cikisDetay,'cikis')+'</div>':'')
+    // 2. Un silondan çıkış (paketleme)
+    +bolum('bb-cikis','🏭','Un Silosundan Çıkış',unCikislar.length,
+      unCikislar.length?
+        '<table><thead><tr><th>Tarih/Saat</th><th>Marka</th><th>Ambalaj</th><th class="r">Adet</th><th class="r">Toplam Kg</th><th>Durum</th><th>Alıcı</th></tr></thead><tbody>'
+        +unCikisRows+'<tr class="tot"><td colspan="4">TOPLAM</td><td class="r c">'+fkg(unCikisTopKg)+'</td><td colspan="2"></td></tr>'
+        +'</tbody></table>':null)
 
+    // 3. Paketli un depodan çıkış
+    +bolum('bb-cikis','📦','Paketli Un Depodan Çıkış',depoCikislar.length,
+      depoCikislar.length?
+        '<table><thead><tr><th>Tarih/Saat</th><th>Ürün</th><th class="r">Miktar</th><th>Alıcı</th></tr></thead><tbody>'
+        +depoCikisRows+'<tr class="tot"><td colspan="2">TOPLAM</td><td class="r c">'+fkg(depoCikisTopKg)+'</td><td></td></tr>'
+        +'</tbody></table>':null,'Bu dönemde depodan sevkiyat yapılmadı.')
+
+    // 4. Kullanılan ambalaj
+    +bolum('bb-amb','🗂','Kullanılan Ambalaj',ambTopAdet+' adet',
+      ambTopAdet?
+        '<table><thead><tr><th>Ambalaj</th><th class="r">Kullanılan Adet</th></tr></thead><tbody>'
+        +ambRows+'<tr class="tot"><td>TOPLAM</td><td class="r c">'+ambTopAdet.toLocaleString('tr-TR')+' adet</td></tr>'
+        +'</tbody></table>':null,'Bu dönemde ambalaj kullanılmadı.')
+
+    // 5. Kullanılan Katkı
+    +bolum('bb-kat','🧪','Kullanılan Katkı',Object.keys(katMap).length?Object.keys(katMap).length+' çeşit':'0',
+      Object.keys(katMap).length?
+        '<table><thead><tr><th>Tarih/Saat</th><th>Katkı</th><th>Paketleme</th><th class="r">Adet</th><th class="r">gr/50kg</th><th class="r">Kullanılan Kg</th></tr></thead><tbody>'
+        +katRows+'<tr class="tot"><td colspan="5">GENEL TOPLAM</td><td class="r c">'+katTopKg.toFixed(3)+' Kg</td></tr>'
+        +'</tbody></table>':null,'Bu dönemde katkı kullanılmadı.')
+
+    // 6. Yan Mamül Çıkışları
+    +bolum('bb-cikis','🏪','Yan Mamül Çıkışları',Object.keys(yanMap).length?Object.keys(yanMap).length+' çeşit':'0',
+      yanTopKg>0?
+        '<table><thead><tr><th>Tarih/Saat</th><th>Ürün</th><th class="r">Miktar</th><th>Alıcı</th></tr></thead><tbody>'
+        +hrkYanRows
+        +'<tr class="tot"><td colspan="2">GENEL TOPLAM</td><td class="r c">'+fkg(yanTopKg)+'</td><td></td></tr>'
+        +'</tbody></table>':null,'Bu dönemde yan mamül sevkiyatı yapılmadı.')
+
+    // 7. Satın alımlar
+    +bolum('bb-sa','🛒','Satın Alımlar',saGercek.length,
+      saGercek.length?
+        '<table><thead><tr><th>Tarih/Saat</th><th>Kategori</th><th>Ürün</th><th class="r">Miktar</th><th>Not</th></tr></thead><tbody>'
+        +saRows+'</tbody></table>':null,'Bu dönemde satın alım yapılmadı.')
+
+    // İmza
     +'<div class="imza">'
       +'<div class="iz"><div class="izc"></div>Hazırlayan</div>'
       +'<div class="iz"><div class="izc"></div>Kontrol Eden</div>'
@@ -3101,7 +3230,7 @@ function printHareketRapor(){
     +'<div class="footer">Arı Un Fabrikası Stok Takip Sistemi — '+tarihStr+' '+saatStr+'</div>'
     +'</body></html>';
 
-  var modEl=g('hrkRapMod'); if(modEl) modEl.classList.remove('on');
+  var modEl=g('hrkRapMod'); if(modEl)modEl.classList.remove('on');
   var w=window.open('','_blank','width=1100,height=800');
   w.document.write(html);
   w.document.close();
@@ -3109,9 +3238,6 @@ function printHareketRapor(){
 }
 
 
-// ═══════════════════════════════════════════════
-// ENVANTER LİSTESİ
-// ═══════════════════════════════════════════════
 function printEnvanter(){
   var now2=new Date();
   var tarihStr=now2.toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
