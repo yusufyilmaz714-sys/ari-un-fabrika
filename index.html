@@ -234,7 +234,83 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--an2)}
 ::-webkit-scrollbar-thumb{background:var(--brm);border-radius:3px}
-@media(max-width:860px){.g2,.g3,.g4,.g6{grid-template-columns:1fr}.sgrid{grid-template-columns:repeat(4,1fr)}}
+/* ── TABLET (860px) ── */
+@media(max-width:860px){
+  .g2,.g3,.g4,.g6{grid-template-columns:1fr}
+  .sgrid{grid-template-columns:repeat(4,1fr)}
+}
+
+/* ── MOBİL (600px) ── */
+@media(max-width:600px){
+  /* Header */
+  header{padding:10px 12px;gap:8px;flex-wrap:wrap}
+  header h1{font-size:1.1rem}
+  header .sub{font-size:.58rem;letter-spacing:1px}
+  /* Rapor butonları — 2 satıra sar */
+  header>div:last-child{flex-wrap:wrap;gap:5px;justify-content:flex-end}
+  header button[onclick]{font-size:.68rem !important;padding:6px 9px !important}
+
+  /* Nav — yatay kaydırmalı şerit */
+  nav{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:6px 8px;gap:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{flex-shrink:0;font-size:.72rem;padding:6px 11px;white-space:nowrap}
+
+  /* İçerik */
+  main{padding:12px 10px 40px}
+  .g2,.g3,.g4,.g6{grid-template-columns:1fr;gap:10px}
+  .sgrid{grid-template-columns:repeat(3,1fr);gap:5px}
+  .card{padding:13px 11px;margin-bottom:12px}
+  .ct{font-size:.88rem}
+
+  /* Stat kartları */
+  .stat .v{font-size:1.15rem}
+  .stat .l{font-size:.58rem}
+  .g6{grid-template-columns:repeat(2,1fr)}
+
+  /* Formlar */
+  input,select{font-size:.88rem;padding:9px 10px}
+  label{font-size:.73rem}
+  .fr{margin-bottom:12px}
+  .btn{padding:10px 16px;font-size:.84rem}
+  .bsm{padding:5px 11px;font-size:.74rem}
+
+  /* Tablolar */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{font-size:.75rem;min-width:400px}
+  thead th,tbody td{padding:5px 7px}
+
+  /* Tab butonları */
+  .tbs{flex-wrap:nowrap;overflow-x:auto;gap:4px;padding-bottom:2px}
+  .tb{flex-shrink:0;font-size:.73rem;padding:5px 10px}
+
+  /* Silo kartları */
+  .si{min-height:68px}
+  .si-kg{font-size:.72rem}
+  .si-nm{font-size:.55rem}
+
+  /* Un kartları */
+  .ug{grid-template-columns:repeat(2,1fr)}
+  .ub .um{font-size:.78rem}
+  .ub .uk{font-size:.95rem}
+
+  /* Modal */
+  .md{min-width:unset !important;width:96vw !important;max-width:96vw;max-height:88vh;padding:18px 14px}
+
+  /* Paketleme karışım satırları */
+  .pr{flex-wrap:wrap;gap:4px}
+  .pr label{min-width:unset;flex:1 1 100%}
+
+  /* Kayıt silme butonu */
+  .bred.bsm{padding:4px 8px}
+}
+
+/* ── KÜÇÜK MOBİL (380px) ── */
+@media(max-width:380px){
+  .sgrid{grid-template-columns:repeat(2,1fr)}
+  .g6{grid-template-columns:repeat(2,1fr)}
+  header h1{font-size:.95rem}
+  nav button{font-size:.67rem;padding:5px 9px}
+}
 @media print{
   body,html{margin:0;padding:0;background:#fff!important;color:#1a1a1a!important}
   header,nav,main,.mb{display:none!important}
