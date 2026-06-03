@@ -246,74 +246,128 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
 
 /* ── MOBİL (600px) ── */
 @media(max-width:600px){
-  /* Header */
-  header{padding:10px 12px;gap:8px;flex-wrap:wrap}
-  header h1{font-size:1.1rem}
-  header .sub{font-size:.58rem;letter-spacing:1px}
-  /* Rapor butonları — 2 satıra sar */
-  header>div:last-child{flex-wrap:wrap;gap:5px;justify-content:flex-end}
-  header button[onclick]{font-size:.68rem !important;padding:6px 9px !important}
+  /* Masaüstü → gizle / Mobil → göster */
+  .mob-hide{display:none !important}
+  .mob-show{display:block !important}
 
-  /* Nav — yatay kaydırmalı şerit */
-  nav{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:6px 8px;gap:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  /* Header: logo solda, raporlar+durum sağda */
+  header{padding:10px 12px;gap:0;justify-content:space-between;align-items:center;min-height:54px}
+  header>div:first-child{flex:1}
+  header h1{font-size:1rem;line-height:1.2}
+  header .sub{font-size:.55rem;letter-spacing:.5px;margin-top:1px}
+  header>div:last-child{gap:8px;flex-shrink:0}
+
+  /* Nav — temiz yatay şerit, görsel olarak belirgin */
+  nav{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:0;
+    gap:0;
+    background:var(--an2);
+    border-bottom:2px solid var(--brm);
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
   nav::-webkit-scrollbar{display:none}
-  nav button{flex-shrink:0;font-size:.72rem;padding:6px 11px;white-space:nowrap}
+  nav button{
+    flex-shrink:0;
+    font-size:.72rem;
+    padding:10px 13px;
+    white-space:nowrap;
+    border-radius:0;
+    border:none;
+    border-right:1px solid rgba(122,82,48,.2);
+    border-bottom:3px solid transparent;
+    margin:0;
+  }
+  nav button.active{
+    border-bottom-color:var(--gd);
+    background:rgba(201,168,76,.12);
+    color:var(--gd);
+  }
 
-  /* İçerik */
-  main{padding:12px 10px 40px}
-  .g2,.g3,.g4,.g6{grid-template-columns:1fr;gap:10px}
+  /* Ana içerik */
+  main{padding:12px 10px 30px}
+  .g2,.g3,.g4{grid-template-columns:1fr;gap:10px}
+  .g6{grid-template-columns:repeat(2,1fr);gap:8px}
   .sgrid{grid-template-columns:repeat(3,1fr);gap:5px}
-  .card{padding:13px 11px;margin-bottom:12px}
-  .ct{font-size:.88rem}
+  .card{padding:14px 12px;margin-bottom:10px;border-radius:8px}
+  .ct{font-size:.9rem;margin-bottom:10px}
 
-  /* Stat kartları */
-  .stat .v{font-size:1.15rem}
+  /* Stat kartları — daha kompakt */
+  .stat{padding:10px 8px}
+  .stat .v{font-size:1.2rem}
   .stat .l{font-size:.58rem}
-  .g6{grid-template-columns:repeat(2,1fr)}
 
-  /* Formlar */
-  input,select{font-size:.88rem;padding:9px 10px}
-  label{font-size:.73rem}
-  .fr{margin-bottom:12px}
-  .btn{padding:10px 16px;font-size:.84rem}
-  .bsm{padding:5px 11px;font-size:.74rem}
-
-  /* Tablolar */
-  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  table{font-size:.75rem;min-width:400px}
-  thead th,tbody td{padding:5px 7px}
+  /* Formlar — parmak dostu */
+  input,select{font-size:.9rem;padding:10px 11px;border-radius:6px}
+  label{font-size:.74rem;margin-bottom:4px}
+  .fr{margin-bottom:14px}
+  .btn{padding:12px 18px;font-size:.86rem;border-radius:7px;width:100%}
+  .bsm{padding:7px 13px;font-size:.76rem;width:auto}
+  .bgold,.bgrn,.bred:not(.bsm),.bbr:not(.bsm){width:100%;justify-content:center}
 
   /* Tab butonları */
-  .tbs{flex-wrap:nowrap;overflow-x:auto;gap:4px;padding-bottom:2px}
-  .tb{flex-shrink:0;font-size:.73rem;padding:5px 10px}
+  .tbs{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    gap:4px;
+    padding-bottom:4px;
+    scrollbar-width:none;
+  }
+  .tbs::-webkit-scrollbar{display:none}
+  .tb{flex-shrink:0;font-size:.74rem;padding:7px 12px}
 
-  /* Silo kartları */
-  .si{min-height:68px}
-  .si-kg{font-size:.72rem}
-  .si-nm{font-size:.55rem}
+  /* Tablolar — yatay kaydırma */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -12px;padding:0 12px}
+  table{font-size:.74rem;min-width:380px}
+  thead th,tbody td{padding:6px 8px}
+
+  /* Silo grid */
+  .sgrid{grid-template-columns:repeat(3,1fr)}
+  .si{min-height:72px;padding:7px 5px}
+  .si-id{font-size:.78rem}
+  .si-kg{font-size:.7rem}
+  .si-nm{font-size:.56rem}
 
   /* Un kartları */
-  .ug{grid-template-columns:repeat(2,1fr)}
+  .ug{grid-template-columns:repeat(2,1fr);gap:8px}
+  .ub{padding:10px 8px}
   .ub .um{font-size:.78rem}
   .ub .uk{font-size:.95rem}
 
-  /* Modal */
-  .md{min-width:unset !important;width:96vw !important;max-width:96vw;max-height:88vh;padding:18px 14px}
+  /* Modal — tam genişlik */
+  .md{
+    min-width:unset !important;
+    width:96vw !important;
+    max-width:96vw;
+    max-height:90vh;
+    overflow-y:auto;
+    padding:18px 15px;
+    border-radius:12px;
+  }
+  .md-t{font-size:1rem}
 
-  /* Paketleme karışım satırları */
-  .pr{flex-wrap:wrap;gap:4px}
-  .pr label{min-width:unset;flex:1 1 100%}
+  /* Paketleme karışım */
+  .pr{flex-wrap:wrap;gap:6px}
+  .pr label{flex:1 1 100%;margin:0}
+  .pr input[type=number]{width:80px}
 
-  /* Kayıt silme butonu */
-  .bred.bsm{padding:4px 8px}
+  /* G2 form layoutu */
+  .g2 .card:last-child{margin-top:0}
+
+  /* Alert mesajları */
+  .al{font-size:.8rem;padding:8px 10px;border-radius:6px;margin-top:8px}
 }
 
 /* ── KÜÇÜK MOBİL (380px) ── */
 @media(max-width:380px){
   .sgrid{grid-template-columns:repeat(2,1fr)}
   .g6{grid-template-columns:repeat(2,1fr)}
-  header h1{font-size:.95rem}
-  nav button{font-size:.67rem;padding:5px 9px}
+  header h1{font-size:.9rem}
+  nav button{font-size:.67rem;padding:9px 10px}
+  .btn{font-size:.82rem;padding:11px 14px}
 }
 @media print{
   body,html{margin:0;padding:0;background:#fff!important;color:#1a1a1a!important}
@@ -327,32 +381,43 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
 </head>
 <body>
 <header>
+  <!-- Logo -->
   <div><h1>🌾 Arı Un Fabrikası</h1><div class="sub">San. Tic. A.Ş. — Stok Takip Sistemi</div></div>
-  <div style="display:flex;align-items:center;gap:16px">
-    <button onclick="printRapor()" style="background:linear-gradient(135deg,var(--gd),var(--gdl));border:none;color:var(--an);font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(201,168,76,.4);transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-      🖨️ Stok Raporu
-    </button>
-    <button onclick="openSevkRapor()" style="background:linear-gradient(135deg,#1b4f72,#2e86c1);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-      📊 Sevkiyat Raporu
-    </button>
-    <button onclick="openUretimRapor()" style="background:linear-gradient(135deg,#3A6B35,#2e5429);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-      📊 Üretim Raporu
-    </button>
-    <button onclick="openHareketRapor()" style="background:linear-gradient(135deg,#1a5276,#154360);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-      📋 Hareket Raporu
-    </button>
-    <button onclick="openDuzRapor()" style="background:linear-gradient(135deg,#6d2c00,#8b3a00);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-      ✏️ Düzenleme Raporu
-    </button>
-    <button onclick="printEnvanter()" style="background:linear-gradient(135deg,#4a235a,#6c3483);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-      📃 Envanter Listesi
-    </button>
-    <button onclick="sistemSifirla()" title="Tüm verileri sıfırla" style="background:var(--rd);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.78rem;padding:9px 14px;border-radius:6px;cursor:pointer;opacity:.85;transition:all .2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.85'">
-      🗑️ Sıfırla
-    </button>
+
+  <!-- SAĞ GRUP -->
+  <div style="display:flex;align-items:center;gap:10px">
+
+    <!-- Masaüstü: tüm rapor butonları (.mob-hide ile mobilde gizlenir) -->
+    <div class="mob-hide" style="display:flex;align-items:center;gap:8px">
+      <button onclick="printRapor()" style="background:linear-gradient(135deg,var(--gd),var(--gdl));border:none;color:var(--an);font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(201,168,76,.4)">🖨️ Stok Raporu</button>
+      <button onclick="openSevkRapor()" style="background:linear-gradient(135deg,#1b4f72,#2e86c1);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer">📊 Sevkiyat</button>
+      <button onclick="openUretimRapor()" style="background:linear-gradient(135deg,#3A6B35,#2e5429);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer">📊 Üretim</button>
+      <button onclick="openHareketRapor()" style="background:linear-gradient(135deg,#1a5276,#154360);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer">📋 Hareket</button>
+      <button onclick="openDuzRapor()" style="background:linear-gradient(135deg,#6d2c00,#8b3a00);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer">✏️ Düzenleme</button>
+      <button onclick="printEnvanter()" style="background:linear-gradient(135deg,#4a235a,#6c3483);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer">📃 Envanter</button>
+      <button onclick="sistemSifirla()" style="background:var(--rd);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.78rem;padding:9px 14px;border-radius:6px;cursor:pointer;opacity:.85">🗑️</button>
+    </div>
+
+    <!-- Mobil: tek dropdown butonu (.mob-show ile sadece mobilde görünür) -->
+    <div class="mob-show" style="display:none;position:relative" id="rapDropWrap">
+      <button onclick="mobRapToggle()" id="rapDropBtn" style="background:linear-gradient(135deg,var(--gd),var(--gdl));border:none;color:var(--an);font-family:'Lato',sans-serif;font-weight:700;font-size:.8rem;padding:8px 14px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px">
+        📋 Raporlar ▾
+      </button>
+      <div id="rapDropMenu" style="display:none;position:fixed;top:60px;right:10px;background:var(--an2);border:1px solid var(--brm);border-radius:10px;min-width:200px;z-index:500;box-shadow:0 8px 32px rgba(0,0,0,.5);overflow:hidden">
+        <button onclick="printRapor();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">🖨️ Stok Raporu</button>
+        <button onclick="openSevkRapor();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">📊 Sevkiyat Raporu</button>
+        <button onclick="openUretimRapor();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">📊 Üretim Raporu</button>
+        <button onclick="openHareketRapor();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">📋 Hareket Raporu</button>
+        <button onclick="openDuzRapor();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">✏️ Düzenleme Raporu</button>
+        <button onclick="printEnvanter();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">📃 Envanter Listesi</button>
+        <button onclick="sistemSifirla()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;color:#e57373;font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">🗑️ Sistemi Sıfırla</button>
+      </div>
+    </div>
+
+    <!-- Firebase durum + saat -->
     <div style="text-align:right">
-      <div id="fbStatus" style="font-size:.75rem;font-weight:700;color:#C9A84C;margin-bottom:2px">⏳ Bağlanıyor...</div>
-      <div id="clk" style="font-size:.74rem;color:var(--crm)"></div>
+      <div id="fbStatus" style="font-size:.72rem;font-weight:700;color:#C9A84C;margin-bottom:1px">⏳ Bağlanıyor...</div>
+      <div id="clk" style="font-size:.68rem;color:var(--crm)"></div>
     </div>
   </div>
 </header>
@@ -1146,6 +1211,21 @@ function showA(id,msg,ok){
   el.innerHTML='<div class="al '+(ok?'ok':'er')+'">'+msg+'</div>';
   setTimeout(function(){if(el)el.innerHTML='';},4000);
 }
+function mobRapToggle(){
+  var menu=document.getElementById('rapDropMenu');
+  if(!menu)return;
+  menu.style.display=menu.style.display==='none'?'block':'none';
+}
+function mobRapKapat(){
+  var menu=document.getElementById('rapDropMenu');
+  if(menu)menu.style.display='none';
+}
+// Dışarı tıklayınca kapat
+document.addEventListener('click',function(e){
+  var wrap=document.getElementById('rapDropWrap');
+  if(wrap&&!wrap.contains(e.target)){mobRapKapat();}
+});
+
 function gP(p,btn){
   document.querySelectorAll('.pg').forEach(function(x){x.classList.remove('active');});
   document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('active');});
@@ -4092,7 +4172,20 @@ function tick(){
 }
 setInterval(tick,1000); tick();
 
+function adaptMobil(){
+  var isMob=window.innerWidth<=600;
+  var hideEls=document.querySelectorAll('.mob-hide');
+  var showEls=document.querySelectorAll('.mob-show');
+  hideEls.forEach(function(el){el.style.display=isMob?'none':'flex';});
+  showEls.forEach(function(el){el.style.display=isMob?'block':'none';});
+  if(!isMob)mobRapKapat();
+}
+window.addEventListener('resize',adaptMobil);
+
 window.addEventListener('DOMContentLoaded',function(){
+  adaptMobil();
+  var urGecmis=g('ur_gecmis_kart');
+  if(urGecmis)urGecmis.style.display='none';
   // Fonksiyonları global scope'a expose et (Firebase module erişimi için)
   window.S = S;
   window.defState = defState;
