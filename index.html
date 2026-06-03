@@ -97,6 +97,10 @@
           var parsed=JSON.parse(snap.data().data);
           if(Array.isArray(parsed.fab)&&parsed.fab.length===14){
             if(!Array.isArray(parsed.dis)) parsed.dis=[{id:'D1',nm:'Dis Silo 1',kg:0},{id:'D2',nm:'Dis Silo 2',kg:0}];
+            if(!parsed.yikama||typeof parsed.yikama!=='object') parsed.yikama={id:'YK1',nm:'Yıkama Silosu',kg:0};
+            parsed.yikama.kg=+(parsed.yikama.kg)||0;
+            if(!parsed.yikama||typeof parsed.yikama!=='object') parsed.yikama={id:'YK1',nm:'Yıkama Silosu',kg:0};
+            parsed.yikama.kg=+(parsed.yikama.kg)||0;
             parsed.fab.forEach(function(f,i){if(!f.id||f.id.charAt(0)==='F')f.id='B'+(i+1);if(f.nm===undefined)f.nm='';if(!f.cap)f.cap=110000;f.kg=+(f.kg)||0;});
             if(!parsed.log)parsed.log={};
             ['sa','bd','ak','ur','pk','sv'].forEach(function(k){if(!Array.isArray(parsed.log[k]))parsed.log[k]=[];});
@@ -328,6 +332,9 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
     <button onclick="printRapor()" style="background:linear-gradient(135deg,var(--gd),var(--gdl));border:none;color:var(--an);font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(201,168,76,.4);transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
       🖨️ Stok Raporu
     </button>
+    <button onclick="openSevkRapor()" style="background:linear-gradient(135deg,#1b4f72,#2e86c1);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
+      📊 Sevkiyat Raporu
+    </button>
     <button onclick="openUretimRapor()" style="background:linear-gradient(135deg,#3A6B35,#2e5429);border:none;color:#fff;font-family:'Lato',sans-serif;font-weight:700;font-size:.82rem;padding:9px 18px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
       📊 Üretim Raporu
     </button>
@@ -558,72 +565,112 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
 <!-- ══ ÜRETİM ══ -->
 <div id="pg_uretim" class="pg">
   <div class="card">
-    <div class="ct">⚙️ Üretim Girişi</div>
-    <div class="g2">
-      <div>
-        <div class="fr"><label>Parti Adı</label><input type="text" id="ur_parti" placeholder="örn. Sabah Üretimi"></div>
-        <div class="fr"><label>Toplam Üretim (Kg)</label><input type="number" id="ur_top" min="1" step="1" placeholder="0" oninput="urHes()"></div>
-        <p style="font-size:.74rem;color:var(--crm);margin-bottom:7px">Kullanılacak buğday siloları ve yüzdeleri (Toplam %100):</p>
-        <div id="ur_silolar"></div>
-        <div id="ur_pct" style="font-size:.79rem;color:var(--gd);margin-top:5px"></div>
+    <div class="ct">⚙️ Üretim</div>
+    <div class="tbs" style="margin-bottom:14px">
+      <button class="tb on" onclick="swT('urtab','ur_yikama')">🚿 Yıkama Yap</button>
+      <button class="tb" onclick="swT('urtab','ur_uretim')">⚙️ Üretim Yap</button>
+    </div>
+    <div id="urtab">
+
+      <!-- ── YIKAMA YAP ── -->
+      <div id="ur_yikama" class="tp on">
+        <div class="g2">
+          <div>
+            <div style="background:rgba(230,126,34,.1);border:1.5px solid #e67e22;border-radius:7px;padding:10px 14px;margin-bottom:12px">
+              <div style="font-size:.8rem;color:#e67e22;font-weight:700">🚿 Yıkama Silosu Mevcut</div>
+              <div id="yk_mevcut" style="font-size:1.2rem;font-weight:700;color:var(--cr);margin-top:4px">— Kg</div>
+            </div>
+            <div class="fr"><label>Toplam Yıkanacak Miktar (Kg)</label><input type="number" id="yk_top" min="1" step="1" placeholder="0" oninput="ykHes()"></div>
+            <p style="font-size:.74rem;color:var(--crm);margin-bottom:7px">Fabrika silolarından yüzde dağılımı (Toplam %100):</p>
+            <div id="yk_silolar"></div>
+            <div id="yk_pct" style="font-size:.79rem;color:var(--gd);margin-top:5px"></div>
+            <button class="btn bgold" style="margin-top:10px" onclick="doYikama()">🚿 Yıkama Yap</button>
+            <div id="yk_al"></div>
+          </div>
+          <div>
+            <div class="ct" style="font-size:.85rem;margin-bottom:10px">📊 Fabrika Siloları</div>
+            <div class="sgrid" id="YK_silo"></div>
+          </div>
+        </div>
       </div>
-      <div>
-        <p style="font-size:.76rem;color:var(--gdl);font-weight:700;margin-bottom:9px">ÜRETİM ÇIKTILARI (Kg)</p>
-        <div class="fr"><label>Un-1 → Un Siloya (Marka)</label>
-          <div style="display:flex;gap:5px">
+
+      <!-- ── ÜRETİM YAP ── -->
+      <div id="ur_uretim" class="tp">
+        <div class="g2">
+          <div>
+            <div style="background:rgba(230,126,34,.1);border:1.5px solid #e67e22;border-radius:7px;padding:10px 14px;margin-bottom:12px">
+              <div style="font-size:.8rem;color:#e67e22;font-weight:700">🚿 Yıkama Silosu Mevcut</div>
+              <div id="ur_yk_mevcut" style="font-size:1.2rem;font-weight:700;color:var(--cr);margin-top:4px">— Kg</div>
+              <div style="font-size:.71rem;color:var(--brm);margin-top:3px">Üretim miktarı kadar otomatik düşülür</div>
+            </div>
+            <div class="fr"><label>Parti Adı</label><input type="text" id="ur_parti" placeholder="örn. Sabah Üretimi"></div>
+            <div class="fr"><label>Toplam Üretim (Kg)</label><input type="number" id="ur_top" min="1" step="1" placeholder="0" oninput="urHes()"></div>
+          </div>
+          <div>
+            <p style="font-size:.76rem;color:var(--gdl);font-weight:700;margin-bottom:9px">ÜRETİM ÇIKTILARI (Kg)</p>
+            <div class="fr"><label>Un-1 → Un Siloya (Marka)</label>
+              <div style="display:flex;gap:5px">
             <input type="text" id="ur_u1m" placeholder="Marka" style="flex:1" oninput="urCHes()">
             <input type="number" id="ur_u1k" min="0" step="1" placeholder="Kg" style="width:85px" oninput="urCHes()">
           </div>
         </div>
-        <div class="fr"><label>Un-2 → Un Siloya (Marka)</label>
-          <div style="display:flex;gap:5px">
+            <div class="fr"><label>Un-2 → Un Siloya (Marka)</label>
+              <div style="display:flex;gap:5px">
             <input type="text" id="ur_u2m" placeholder="Marka" style="flex:1" oninput="urCHes()">
             <input type="number" id="ur_u2k" min="0" step="1" placeholder="Kg" style="width:85px" oninput="urCHes()">
           </div>
         </div>
-        <div class="fr"><label>Kepek → Siloya (Kg)</label><input type="number" id="ur_ks" min="0" step="1" placeholder="0" oninput="urCHes()"></div>
-        <div class="fr">
+            <div class="fr"><label>Kepek → Siloya (Kg)</label><input type="number" id="ur_ks" min="0" step="1" placeholder="0" oninput="urCHes()"></div>
+            <div class="fr">
           <label>Kepek → Çuvala (Kg)</label>
-          <div style="display:flex;gap:5px;align-items:center">
+              <div style="display:flex;gap:5px;align-items:center">
             <input type="number" id="ur_kc" min="0" step="1" placeholder="0" style="flex:1" oninput="urCHes();urAHes()">
             <span id="ur_kca" style="font-size:.73rem;color:var(--gd);white-space:nowrap;min-width:70px"></span>
           </div>
         </div>
-        <div class="fr"><label>Razmol → Siloya (Kg)</label><input type="number" id="ur_rs" min="0" step="1" placeholder="0" oninput="urCHes()"></div>
-        <div class="fr">
+            <div class="fr"><label>Razmol → Siloya (Kg)</label><input type="number" id="ur_rs" min="0" step="1" placeholder="0" oninput="urCHes()"></div>
+            <div class="fr">
           <label>Razmol → Çuvala (Kg)</label>
-          <div style="display:flex;gap:5px;align-items:center">
+              <div style="display:flex;gap:5px;align-items:center">
             <input type="number" id="ur_rc" min="0" step="1" placeholder="0" style="flex:1" oninput="urCHes();urAHes()">
             <span id="ur_rca" style="font-size:.73rem;color:var(--gd);white-space:nowrap;min-width:70px"></span>
           </div>
         </div>
-        <div class="fr">
+            <div class="fr">
           <label>Bonkalite → Çuvala (Kg)</label>
-          <div style="display:flex;gap:5px;align-items:center">
+              <div style="display:flex;gap:5px;align-items:center">
             <input type="number" id="ur_bk" min="0" step="1" placeholder="0" style="flex:1" oninput="urCHes();urAHes()">
             <span id="ur_bka" style="font-size:.73rem;color:var(--gd);white-space:nowrap;min-width:70px"></span>
           </div>
         </div>
-        <div class="fr">
+            <div class="fr">
           <label>Kırık Buğday → Çuvala (Kg)</label>
-          <div style="display:flex;gap:5px;align-items:center">
+              <div style="display:flex;gap:5px;align-items:center">
             <input type="number" id="ur_kb" min="0" step="1" placeholder="0" style="flex:1" oninput="urCHes();urAHes()">
             <span id="ur_kba" style="font-size:.73rem;color:var(--gd);white-space:nowrap;min-width:70px"></span>
           </div>
         </div>
-        <div style="background:var(--an);border-radius:7px;padding:10px;margin-bottom:10px;border:1px solid var(--brm)">
+            <div style="background:var(--an);border-radius:7px;padding:10px;margin-bottom:10px;border:1px solid var(--brm)">
           <p style="font-size:.74rem;color:var(--gdl);font-weight:700;margin-bottom:8px">ÇUVAL AMBALAJİ SEÇ</p>
-          <div class="fr"><label>Kepek & Razmol Çuvalı</label><select id="ur_akr"></select></div>
-          <div class="fr"><label>Bonkalite Çuvalı</label><select id="ur_abk"></select></div>
-          <div class="fr"><label>Kırık Buğday Çuvalı</label><select id="ur_akb"></select></div>
+              <div class="fr"><label>Kepek & Razmol Çuvalı</label><select id="ur_akr"></select></div>
+              <div class="fr"><label>Bonkalite Çuvalı</label><select id="ur_abk"></select></div>
+              <div class="fr"><label>Kırık Buğday Çuvalı</label><select id="ur_akb"></select></div>
         </div>
-        <div id="ur_cik" style="font-size:.79rem;color:var(--gd);margin-bottom:9px"></div>
-        <button class="btn bgold" onclick="doUretim()">✅ Üretimi Kaydet</button>
-        <div id="ur_al"></div>
+            <div id="ur_cik" style="font-size:.79rem;color:var(--gd);margin-bottom:9px"></div>
+            <button class="btn bgold" onclick="doUretim()">✅ Üretimi Kaydet</button>
+            <div id="ur_al"></div>
       </div>
     </div>
   </div>
-  <div class="card">
+
+          </div>
+        </div>
+      </div><!-- end ur_uretim -->
+
+    </div><!-- end urtab -->
+  </div><!-- end card -->
+
+  <div class="card" id="ur_gecmis_kart">
     <div class="ct">📜 Üretim Geçmişi</div>
     <div class="tw">
       <table><thead><tr><th>Tarih</th><th>Parti</th><th style="text-align:right">Buğday</th><th>Un-1</th><th>Un-2</th><th style="text-align:right">Kep-S</th><th style="text-align:right">Kep-Ç</th><th style="text-align:right">Raz-S</th><th style="text-align:right">Raz-Ç</th><th style="text-align:right">Bonk.</th><th style="text-align:right">Kırık</th><th>İşlem</th></tr></thead>
@@ -657,6 +704,8 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
         </div>
         <div id="ps" class="tp">
           <div class="fr"><label>Alıcı <span style="color:var(--rd)">*</span></label><input type="text" id="ps_ali" placeholder="Alıcı adı (zorunlu)"></div>
+          <div class="fr"><label>Temsilci <span style="color:var(--rd)">*</span></label><input type="text" id="ps_tem" placeholder="Temsilci adı (zorunlu)"></div>
+          <div class="fr"><label>Birim Fiyat (&#8378;/kg) <span style="color:var(--rd)">*</span></label><input type="number" id="ps_fiy" min="0.01" step="0.01" placeholder="0.00"></div>
           <div class="fr"><label>Marka</label><input type="text" id="ps_m" placeholder="Ürün markası" oninput="pHes('ps')"></div>
           <div class="fr"><label>Ambalaj (Un)</label><select id="ps_amb" onchange="pHes('ps')"></select></div>
           <div class="fr"><label>Toplam Miktar (Kg)</label><input type="number" id="ps_kg" min="1" step="1" placeholder="0" oninput="pHes('ps')"></div>
@@ -692,6 +741,8 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
           <div class="fr"><label>Ürün</label><select id="su_urun" onchange="suStok()"></select></div>
           <div class="fr"><label>Adet</label><input type="number" id="su_adet" min="1" step="1" placeholder="0"></div>
           <div class="fr"><label>Alıcı <span style="color:var(--rd)">*</span></label><input type="text" id="su_ali" placeholder="Alıcı adı (zorunlu)"></div>
+          <div class="fr"><label>Temsilci <span style="color:var(--rd)">*</span></label><input type="text" id="su_tem" placeholder="Temsilci adı (zorunlu)"></div>
+          <div class="fr"><label>Birim Fiyat (&#8378;/kg) <span style="color:var(--rd)">*</span></label><input type="number" id="su_fiy" min="0.01" step="0.01" placeholder="0.00"></div>
           <div id="su_oz" style="font-size:.79rem;color:var(--crm);margin:6px 0"></div>
           <button class="btn bgold" onclick="doSevkUn()">🚚 Sevket</button>
           <div id="su_al"></div>
@@ -711,6 +762,8 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
           </div>
           <div class="fr"><label>Miktar (Kg)</label><input type="number" id="sy_kg" min="1" step="1" placeholder="0"></div>
           <div class="fr"><label>Alıcı <span style="color:var(--rd)">*</span></label><input type="text" id="sy_ali" placeholder="Alıcı adı (zorunlu)"></div>
+          <div class="fr"><label>Temsilci <span style="color:var(--rd)">*</span></label><input type="text" id="sy_tem" placeholder="Temsilci adı (zorunlu)"></div>
+          <div class="fr"><label>Birim Fiyat (&#8378;/kg) <span style="color:var(--rd)">*</span></label><input type="number" id="sy_fiy" min="0.01" step="0.01" placeholder="0.00"></div>
           <div id="sy_oz" style="font-size:.79rem;color:var(--crm);margin:6px 0"></div>
           <button class="btn bgold" onclick="doSevkYan()">🚚 Sevket</button>
           <div id="sy_al"></div>
@@ -821,7 +874,7 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
         <div class="tw"><table><thead><tr><th>Tarih</th><th>Tip</th><th>Marka</th><th>Ambalaj</th><th style="text-align:right">Adet</th><th style="text-align:right">Kg</th><th>İşlem</th></tr></thead><tbody id="R_pk"></tbody></table></div>
       </div>
       <div id="r_sv" class="tp">
-        <div class="tw"><table><thead><tr><th>Tarih</th><th>Tip</th><th>Ürün</th><th>Miktar</th><th>İşlem</th></tr></thead><tbody id="R_sv"></tbody></table></div>
+        <div class="tw"><table><thead><tr><th>Tarih</th><th>Tip</th><th>Ürün</th><th>Miktar</th><th>Alıcı</th><th>Temsilci</th><th style="text-align:right">Birim Fiyat</th><th style="text-align:right">Toplam</th><th>İşlem</th></tr></thead><tbody id="R_sv"></tbody></table></div>
       </div>
       <div id="r_sa" class="tp">
         <div class="tw"><table><thead><tr><th>Tarih</th><th>Kategori</th><th>Ürün</th><th>Miktar</th><th>Not</th><th>İşlem</th></tr></thead><tbody id="R_sa"></tbody></table></div>
@@ -865,6 +918,23 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
     <div style="display:flex;gap:9px;margin-top:12px">
       <button class="btn bgold" onclick="printDuzRapor()">🖨️ Raporu Yazdır / PDF</button>
       <button class="btn bbr" onclick="var m=g('duzRapMod');if(m)m.classList.remove('on')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- SEVKİYAT RAPORU MODAL -->
+<div id="sevkRapMod" class="mb">
+  <div class="md" style="min-width:440px">
+    <div class="md-t">📊 Sevkiyat Raporu</div>
+    <p style="font-size:.8rem;color:var(--crm);margin-bottom:12px">Temsilci bazında satış — birim fiyat ve toplam tutar.</p>
+    <div class="g2">
+      <div class="fr"><label>Başlangıç Tarihi</label><input type="date" id="svrap_bas" onchange="svRapOzet()"></div>
+      <div class="fr"><label>Bitiş Tarihi</label><input type="date" id="svrap_bit" onchange="svRapOzet()"></div>
+    </div>
+    <div id="svrap_ozet" style="font-size:.82rem;color:var(--crm);margin:8px 0;min-height:20px"></div>
+    <div style="display:flex;gap:9px;margin-top:12px">
+      <button class="btn bgold" onclick="printSevkRapor()">🖨️ Raporu Yazdır / PDF</button>
+      <button class="btn bbr" onclick="g('sevkRapMod').classList.remove('on')">İptal</button>
     </div>
   </div>
 </div>
@@ -967,6 +1037,7 @@ function defState(){
   return {
     fab: Array.from({length:14},function(_,i){ return {id:'B'+(i+1),kg:0,cap:110000,nm:''}; }),
     dis: [{id:'D1',nm:'Dış Silo 1',kg:0},{id:'D2',nm:'Dış Silo 2',kg:0}],
+    yikama: {id:'YK1',nm:'Yıkama Silosu',kg:0},
     un: {},
     ks:0, rs:0, kc:0, rc:0, bk:0, kb:0,
     depo: [],
@@ -1023,6 +1094,8 @@ var S = defState();
       ];
     }
     p.dis.forEach(function(d,i){if(!d.nm)d.nm='Dış Silo '+(i+1); d.kg=+(d.kg)||0;});
+    if(!p.yikama||typeof p.yikama!=='object') p.yikama={id:'YK1',nm:'Yıkama Silosu',kg:0};
+    p.yikama.kg=+(p.yikama.kg)||0;
 
     // log
     if(!p.log||typeof p.log!=='object') p.log={};
@@ -1078,6 +1151,9 @@ function gP(p,btn){
   document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('active');});
   var pg=g('pg_'+p); if(pg)pg.classList.add('active');
   if(btn)btn.classList.add('active');
+  // Üretim Geçmişi kartını sadece üretim sayfasında göster
+  var urGecmis=g('ur_gecmis_kart');
+  if(urGecmis)urGecmis.style.display=(p==='uretim'?'block':'none');
   rAll();
 }
 function swT(cont,target){
@@ -1594,7 +1670,7 @@ function rDepo(bid){
 
 function rDash(){
   var topFab=0; S.fab.forEach(function(s){topFab+=s.kg;});
-  var topDis=0; S.dis.forEach(function(s){topDis+=s.kg;});
+  var topDis=0; S.dis.forEach(function(s){topDis+=s.kg;}); if(S.yikama)topDis+=S.yikama.kg;
   var topUn=0; Object.keys(S.un).forEach(function(k){topUn+=S.un[k];});
   var topDepoPak=0; S.depo.forEach(function(r){topDepoPak+=r.adet*r.akg;});
   var el=g('D_stats');
@@ -1606,6 +1682,19 @@ function rDash(){
     +'<div class="stat"><div class="v">'+fkg(S.bk)+'</div><div class="l">Toplam Bonkalite</div></div>'
     +'<div class="stat"><div class="v">'+fkg(S.kb)+'</div><div class="l">Toplam Kırık Buğday</div></div>';
   rSilos('D_silo',false);
+  (function(){
+    var el=g('D_silo'); if(!el)return;
+    var s=S.yikama||{kg:0,nm:'Yıkama Silosu'};
+    var d=document.createElement('div');
+    d.className='si'+(s.kg===0?' empty':'');
+    d.style.cssText='border-color:#e67e22;border-width:2px';
+    d.innerHTML='<div class="si-id" style="color:#e67e22">🚿 YK</div>'
+      +'<div class="si-nm" title="'+s.nm+'">'+s.nm+'</div>'
+      +'<div class="si-kg">'+fkg(s.kg)+'</div>'
+      +'<div class="si-bos" style="color:#e67e22;font-size:.59rem">Sınırsız</div>'
+      +'<div class="si-bar"><div class="si-fill" style="width:'+(s.kg>0?30:0)+'%;background:#e67e22"></div></div>';
+    el.appendChild(d);
+  })();
   rUnSilo('D_un');
   rYan('D_yan');
   rDepo('D_depo');
@@ -1719,7 +1808,19 @@ function rLogs(){
   rLog('R_ak',S.log.ak,function(r){return '<td>'+r.t+'</td><td>'+r.k+'</td><td>'+r.h+'</td><td class="r">'+fkg(r.kg)+'</td><td class="a">'+eb('ak',r.id)+'</td>';});
   rLog('R_ur',S.log.ur,function(r){return '<td>'+r.t+'</td><td>'+r.parti+'</td><td class="r">'+fkg(r.bkg)+'</td><td>'+(r.u1m||'')+':'+(r.u1k?fkg(r.u1k):'—')+'</td><td>'+(r.u2m||'')+':'+(r.u2k?fkg(r.u2k):'—')+'</td><td class="r">'+fkg(r.ks||0)+'</td><td class="r">'+fkg(r.kc||0)+'</td><td class="r">'+fkg(r.rs||0)+'</td><td class="r">'+fkg(r.rc||0)+'</td><td class="r">'+fkg(r.bk||0)+'</td><td class="r">'+fkg(r.kb||0)+'</td><td class="a">'+eb('ur',r.id)+'</td>';});
   rLog('R_pk',S.log.pk,function(r){return '<td>'+r.t+'</td><td><span class="bdg '+(r.tip==='depo'?'bgd':'bgn')+'">'+(r.tip==='depo'?'Depo':'Sevk')+'</span></td><td>'+r.marka+'</td><td>'+r.aad+'</td><td class="r">'+r.adet+'</td><td class="r">'+fkg(r.adet*r.akg)+'</td><td class="a">'+eb('pk',r.id)+'</td>';});
-  rLog('R_sv',S.log.sv,function(r){return '<td>'+r.t+'</td><td><span class="bdg bblu">'+(r.tip||'Un')+'</span></td><td>'+r.urun+'</td><td>'+r.miktar+'</td><td class="a">'+eb('sv',r.id)+'</td>';});
+  rLog('R_sv',S.log.sv,function(r){
+    var fiyStr=r.birimFiyat?r.birimFiyat.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺':'—';
+    var tutStr=r.toplamTutar?r.toplamTutar.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺':'—';
+    return '<td>'+r.t+'</td>'
+      +'<td><span class="bdg bblu">'+(r.tip||'Un')+'</span></td>'
+      +'<td>'+r.urun+'</td>'
+      +'<td>'+r.miktar+'</td>'
+      +'<td>'+(r.alici||'—')+'</td>'
+      +'<td><b>'+(r.temsilci||'—')+'</b></td>'
+      +'<td style="text-align:right">'+fiyStr+'</td>'
+      +'<td style="text-align:right;color:#1b4f72;font-weight:700">'+tutStr+'</td>'
+      +'<td class="a">'+eb('sv',r.id)+'</td>';
+  });
   // Satın Alma: Düzenleme kayıtlarını AYIR
   var saSadece=S.log.sa.filter(function(r){return r.kat!=='Düzenleme';});
   var duzSadece=S.log.sa.filter(function(r){return r.kat==='Düzenleme';});
@@ -1772,6 +1873,7 @@ function rAll(){
   rUrSilos();
   rPakKar('pd'); rPakKar('ps');
   syStok();
+  rYkSilos();
   // Refresh stok panel
   var kat2=gv('sa_kat');
   if(kat2) saKat();
@@ -2010,28 +2112,109 @@ function doAktarim(){
 // ═══════════════════════════════════════════════
 // ÜRETİM
 // ═══════════════════════════════════════════════
-function rUrSilos(){
-  var c=g('ur_silolar'); if(!c)return;
-  var top=gn('ur_top');
-  c.innerHTML='';
+// ═══════════════════════════════════════════════
+// YIKAMA SİSTEMİ
+// ═══════════════════════════════════════════════
+function rYkSilos(){
+  // Yıkama sekmesindeki fabrika silosu grid
+  var el=g('YK_silo'); if(!el)return;
+  el.innerHTML='';
+  S.fab.forEach(function(s){
+    var d=document.createElement('div');
+    d.className='si'+(s.kg===0?' empty':'');
+    d.innerHTML='<div class="si-id">'+s.id+'</div>'
+      +'<div class="si-nm" title="'+(s.nm||'')+'">'+( s.nm||'—')+'</div>'
+      +'<div class="si-kg">'+fkg(s.kg)+'</div>'
+      +'<div class="si-bar"><div class="si-fill'+(s.kg/s.cap>0.9?' warn':'')+'" style="width:'+Math.min(100,s.kg/s.cap*100)+'%"></div></div>';
+    el.appendChild(d);
+  });
+  // Yıkama mevcut güncelle
+  var ykEl=g('yk_mevcut');
+  if(ykEl) ykEl.textContent=fkg(S.yikama?S.yikama.kg:0);
+  var urYkEl=g('ur_yk_mevcut');
+  if(urYkEl) urYkEl.textContent=fkg(S.yikama?S.yikama.kg:0);
+}
+
+function rYkSiloPct(){
+  var el=g('yk_silolar'); if(!el)return;
+  el.innerHTML='';
   S.fab.forEach(function(s){
     var div=document.createElement('div'); div.className='pr';
-    var lbl=s.id+(s.nm?' ('+s.nm+')':'');
-    div.innerHTML='<label title="'+(s.nm||'')+'">'+lbl+'<br><small style="color:var(--brm)">'+fkg(s.kg)+'</small></label>'
-      +'<input type="number" id="upct_'+s.id+'" min="0" max="100" step="1" placeholder="%0" oninput="urHes()">'
-      +'<span id="ukg_'+s.id+'" style="font-size:.71rem;color:var(--crm);min-width:68px"></span>';
-    c.appendChild(div);
+    div.innerHTML='<label style="min-width:120px">'+s.id+(s.nm?' ('+s.nm+')':'')
+      +'<br><small style="color:var(--brm)">'+fkg(s.kg)+'</small></label>'
+      +'<input type="number" id="ykpct_'+s.id+'" min="0" max="100" step="1" placeholder="%0" oninput="ykPctHes()">'
+      +'<span id="ykkg_'+s.id+'" style="font-size:.71rem;color:var(--crm);min-width:68px"></span>';
+    el.appendChild(div);
   });
-  urHes();
+}
+
+function ykHes(){
+  var top=gn('yk_top');
+  S.fab.forEach(function(s){
+    var el=g('ykkg_'+s.id); if(!el)return;
+    var p=+(g('ykpct_'+s.id)&&g('ykpct_'+s.id).value)||0;
+    el.textContent=p>0?'= '+fkg(top*p/100):'';
+  });
+  ykPctHes();
+}
+
+function ykPctHes(){
+  var sum=0;
+  S.fab.forEach(function(s){
+    var el=g('ykpct_'+s.id); if(!el)return;
+    sum+=+(el.value)||0;
+  });
+  var el=g('yk_pct');
+  if(el) el.textContent='Yüzde toplamı: %'+sum+(Math.abs(sum-100)<0.01?' ✅':' ⚠️ (100 olmalı)');
+}
+
+function doYikama(){
+  var top=gn('yk_top');
+  if(!top){showA('yk_al','Yıkanacak miktar girin!',false);return;}
+  var pSum=0, kul=[];
+  S.fab.forEach(function(s){
+    var el=g('ykpct_'+s.id); if(!el)return;
+    var p=+(el.value)||0;
+    if(p>0){pSum+=p; kul.push({id:s.id,p:p});}
+  });
+  if(!kul.length){showA('yk_al','En az bir silodan yüzde girin!',false);return;}
+  if(Math.abs(pSum-100)>0.01){showA('yk_al','Yüzdeler toplamı %100 olmalı! (Şu an: %'+pSum.toFixed(1)+')',false);return;}
+  // Yeterlilik kontrolü
+  for(var i=0;i<kul.length;i++){
+    var s=S.fab.find(function(x){return x.id===kul[i].id;});
+    var ger=top*kul[i].p/100;
+    if(!s||s.kg<ger){showA('yk_al',kul[i].id+' silosunda yeterli buğday yok! ('+fkg(s?s.kg:0)+' mevcut)',false);return;}
+  }
+  // Fabrika silolarından düş, yıkama silosuna ekle
+  if(!S.yikama) S.yikama={id:'YK1',nm:'Yıkama Silosu',kg:0};
+  var siloKulYk={};
+  kul.forEach(function(k){
+    var s=S.fab.find(function(x){return x.id===k.id;});
+    var ger=top*k.p/100;
+    s.kg-=ger;
+    siloKulYk[k.id]=ger;
+  });
+  S.yikama.kg+=top;
+  // Log: aktarım olarak kaydet (kaynak bilgisiyle)
+  S.log.ak.push({id:uid(),t:now(),k:'FAB('+kul.map(function(k){return k.id+'%'+k.p;}).join('+')+')' ,h:'YK1',kg:top,not:'Yıkama',siloKulYk:siloKulYk});
+  // Inputları temizle
+  g('yk_top').value='';
+  S.fab.forEach(function(s){var e=g('ykpct_'+s.id);if(e)e.value='';});
+  var pctEl=g('yk_pct'); if(pctEl)pctEl.textContent='';
+  showA('yk_al',fkg(top)+' yıkama silosuna aktarıldı!',true);
+  sv(); rAll();
+}
+
+function rUrSilos(){
+  var el1=g('yk_mevcut'); if(el1)el1.textContent=fkg(S.yikama?S.yikama.kg:0);
+  var el2=g('ur_yk_mevcut'); if(el2)el2.textContent=fkg(S.yikama?S.yikama.kg:0);
+  rYkSiloPct();
+  rYkSilos();
 }
 function urHes(){
-  var top=gn('ur_top'), sum=0;
-  S.fab.forEach(function(s){
-    var el=g('upct_'+s.id); if(!el)return;
-    var p=+(el.value)||0; sum+=p;
-    var kel=g('ukg_'+s.id); if(kel)kel.textContent='= '+fkg(top*p/100);
-  });
-  var el=g('ur_pct'); if(el)el.textContent='Yüzde toplamı: %'+sum+(Math.abs(sum-100)<0.01?' ✅':' ⚠️');
+  // Üretim miktarı değiştiğinde yıkama silosu bilgisini güncelle
+  var el=g('ur_yk_mevcut');
+  if(el) el.textContent=fkg(S.yikama?S.yikama.kg:0);
 }
 function urCHes(){
   var ids=['ur_u1k','ur_u2k','ur_ks','ur_kc','ur_rs','ur_rc','ur_bk','ur_kb'];
@@ -2055,17 +2238,10 @@ function urAHes(){
 function doUretim(){
   var top=gn('ur_top'), parti=gv('ur_parti')||('Üretim '+now());
   if(!top){showA('ur_al','Toplam miktar girin!',false);return;}
-  var pSum=0, kul=[];
-  S.fab.forEach(function(s){
-    var el=g('upct_'+s.id); if(!el)return;
-    var p=+(el.value)||0; if(p>0){pSum+=p;kul.push({id:s.id,p:p});}
-  });
-  if(kul.length>0&&Math.abs(pSum-100)>0.01){showA('ur_al','Yüzdeler %100 olmalı!',false);return;}
-  for(var i=0;i<kul.length;i++){
-    var s=S.fab.find(function(x){return x.id===kul[i].id;});
-    var ger=top*kul[i].p/100;
-    if(s.kg<ger){showA('ur_al',s.id+' siloda yeterli buğday yok!',false);return;}
-  }
+  // Yıkama silosundan al
+  if(!S.yikama) S.yikama={id:'YK1',nm:'Yıkama Silosu',kg:0};
+  if(S.yikama.kg<top){showA('ur_al','Yıkama silosunda yeterli buğday yok! Mevcut: '+fkg(S.yikama.kg),false);return;}
+  var kul=[], pSum=100;
   var u1m=gv('ur_u1m'),u1k=gn('ur_u1k'),u2m=gv('ur_u2m'),u2k=gn('ur_u2k');
   var ks=gn('ur_ks'),kc=gn('ur_kc'),rs=gn('ur_rs'),rc=gn('ur_rc'),bk=gn('ur_bk'),kb=gn('ur_kb');
   if(S.ks+ks>30000){showA('ur_al','Kepek silo kapasitesi aşılıyor!',false);return;}
@@ -2084,7 +2260,7 @@ function doUretim(){
   var r2=chkAmb(bk,'ur_abk','Bonkalite Çuval'); if(!r2.ok)return;
   var r3=chkAmb(kb,'ur_akb','Kırık Buğday Çuval'); if(!r3.ok)return;
   // Uygula
-  kul.forEach(function(k){S.fab.find(function(x){return x.id===k.id;}).kg-=top*k.p/100;});
+  S.yikama.kg=Math.max(0,S.yikama.kg-top);
   if(u1m&&u1k){if(!S.un[u1m])S.un[u1m]=0;S.un[u1m]+=u1k;}
   if(u2m&&u2k){if(!S.un[u2m])S.un[u2m]=0;S.un[u2m]+=u2k;}
   S.ks+=ks; S.kc+=kc; S.rs+=rs; S.rc+=rc; S.bk+=bk; S.kb+=kb;
@@ -2092,10 +2268,10 @@ function doUretim(){
   if(r2.ok&&r2.a) r2.a.stok-=r2.adet;
   if(r3.ok&&r3.a) r3.a.stok-=r3.adet;
   // silo kullanımını kaydet (geri alma için)
-  var siloKul={}; kul.forEach(function(k){siloKul[k.id]=top*k.p/100;});
+  var siloKul={'YK1':top};
   S.log.ur.push({id:uid(),t:now(),parti:parti,bkg:top,u1m:u1m,u1k:u1k,u2m:u2m,u2k:u2k,ks:ks,kc:kc,rs:rs,rc:rc,bk:bk,kb:kb,siloKul:siloKul,ambKR:r1.ok&&r1.a?{id:r1.a.id,adet:r1.adet}:null,ambBK:r2.ok&&r2.a?{id:r2.a.id,adet:r2.adet}:null,ambKB:r3.ok&&r3.a?{id:r3.a.id,adet:r3.adet}:null});
   ['ur_top','ur_parti','ur_u1m','ur_u1k','ur_u2m','ur_u2k','ur_ks','ur_kc','ur_rs','ur_rc','ur_bk','ur_kb'].forEach(function(id){var e=g(id);if(e)e.value='';});
-  S.fab.forEach(function(s){var e=g('upct_'+s.id);if(e)e.value='';});
+  // yıkama silosu - temizlenecek input yok
   ['ur_kca','ur_rca','ur_bka','ur_kba'].forEach(function(id){var e=g(id);if(e)e.textContent='';});
   sv(); showA('ur_al','Üretim kaydedildi!',true); rAll();
 }
@@ -2166,8 +2342,13 @@ function addKat(pfx){
 }
 function doPak(tip){
   var pfx=tip==='depo'?'pd':'ps';
-  var marka=gv(pfx+'_m').trim(), topkg=gn(pfx+'_kg'), alici=tip==='sevk'?(gv(pfx+'_ali')||'').trim():'';
+  var marka=gv(pfx+'_m').trim(), topkg=gn(pfx+'_kg');
+  var alici=tip==='sevk'?(gv(pfx+'_ali')||'').trim():'';
+  var temsilci=tip==='sevk'?(gv(pfx+'_tem')||'').trim():'';
+  var birimFiyat=tip==='sevk'?+(gv(pfx+'_fiy'))||0:0;
   if(tip==='sevk'&&!alici){showA(pfx+'_al','Alıcı adı zorunludur!',false);return;}
+  if(tip==='sevk'&&!temsilci){showA(pfx+'_al','Temsilci adı zorunludur!',false);return;}
+  if(tip==='sevk'&&!(birimFiyat>0)){showA(pfx+'_al','Birim fiyat giriniz!',false);return;}
   var amb=getAmb(pfx);
   if(!marka||!topkg){showA(pfx+'_al','Marka ve miktar gerekli!',false);return;}
   if(!amb){showA(pfx+'_al','Ambalaj seçin! (Ambalaj & Katkı menüsünden önce ambalaj tanımlayın)',false);return;}
@@ -2221,7 +2402,7 @@ function doPak(tip){
   if(tip==='depo'){
     S.depo.push({id:uid(),marka:marka,aad:amb.ad,akg:akg,adet:adet});
   } else {
-    S.log.sv.push({id:uid(),t:now(),tip:'Un (Paket)',urun:marka+' / '+amb.ad,miktar:adet+' adet / '+fkg(gercek),alici:alici,x:{marka:marka,aad:amb.ad,akg:akg,adet:adet,ambId:amb.id,kar:kar.map(function(x){return {m:x.m,kg:gercek*x.p/100};})}});
+    S.log.sv.push({id:uid(),t:now(),tip:'Un (Paket)',urun:marka+' / '+amb.ad,miktar:adet+' adet / '+fkg(gercek),alici:alici,temsilci:temsilci,birimFiyat:birimFiyat,toplamTutar:Math.round(birimFiyat*gercek*100)/100,x:{marka:marka,aad:amb.ad,akg:akg,adet:adet,ambId:amb.id,kar:kar.map(function(x){return {m:x.m,kg:gercek*x.p/100};})}});
   }
   // Katkı bilgisini loga ekle
   var katKul=[];
@@ -2261,7 +2442,11 @@ function suStok(){
 }
 function doSevkUn(){
   var alici=(gv('su_ali')||'').trim(), key=gv('su_urun'), adet=gn('su_adet');
+  var temsilci=(gv('su_tem')||'').trim();
+  var birimFiyat=+(gv('su_fiy'))||0;
   if(!alici){showA('su_al','Alıcı adı zorunludur!',false);return;}
+  if(!temsilci){showA('su_al','Temsilci adı zorunludur!',false);return;}
+  if(!(birimFiyat>0)){showA('su_al','Birim fiyat giriniz!',false);return;}
   if(!key||!adet){showA('su_al','Ürün ve adet gerekli!',false);return;}
   var parts=key.split('||'), marka=parts[0],aad=parts[1],akg=+(parts[2]);
   var kalan=adet;
@@ -2271,7 +2456,9 @@ function doSevkUn(){
   }
   S.depo=S.depo.filter(function(r){return r.adet>0;});
   if(kalan>0){showA('su_al','Depoda yeterli stok yok!',false);return;}
-  S.log.sv.push({id:uid(),t:now(),tip:'Un (Depo)',urun:marka+' / '+aad,miktar:adet+' adet / '+fkg(adet*akg),alici:alici,x:{marka:marka,aad:aad,akg:akg,adet:adet}});
+  S.log.sv.push({id:uid(),t:now(),tip:'Un (Depo)',urun:marka+' / '+aad,miktar:adet+' adet / '+fkg(adet*akg),alici:alici,temsilci:temsilci,birimFiyat:birimFiyat,toplamTutar:Math.round(birimFiyat*adet*akg*100)/100,x:{marka:marka,aad:aad,akg:akg,adet:adet}});
+  var el=g('su_tem');if(el)el.value='';
+  var el2=g('su_fiy');if(el2)el2.value='';
   var suAliEl=g('su_ali'); if(suAliEl)suAliEl.value='';
   var suAdetEl=g('su_adet'); if(suAdetEl)suAdetEl.value='';
   g('su_adet').value='';
@@ -2284,14 +2471,20 @@ function syStok(){
 }
 function doSevkYan(){
   var alici=(gv('sy_ali')||'').trim(), uk=gv('sy_urun'), kg=gn('sy_kg');
+  var temsilci=(gv('sy_tem')||'').trim();
+  var birimFiyat=+(gv('sy_fiy'))||0;
   if(!alici){showA('sy_al','Alıcı adı zorunludur!',false);return;}
+  if(!temsilci){showA('sy_al','Temsilci adı zorunludur!',false);return;}
+  if(!(birimFiyat>0)){showA('sy_al','Birim fiyat giriniz!',false);return;}
   if(!uk||!kg){showA('sy_al','Ürün ve miktar gerekli!',false);return;}
   var sm={kepek_silo:'ks',kepek_cuval:'kc',razmol_silo:'rs',razmol_cuval:'rc',bonkalite:'bk',kirik:'kb'};
   var sk=sm[uk];
   if(S[sk]<kg){showA('sy_al','Yeterli stok yok!',false);return;}
   S[sk]-=kg;
   var ad={kepek_silo:'Kepek (Silodan)',kepek_cuval:'Kepek (Çuval)',razmol_silo:'Razmol (Silodan)',razmol_cuval:'Razmol (Çuval)',bonkalite:'Bonkalite',kirik:'Kırık Buğday'};
-  S.log.sv.push({id:uid(),t:now(),tip:'Yan Mamül',urun:ad[uk],miktar:fkg(kg),alici:alici,x:{stokKey:sm[uk],kg:kg}});
+  S.log.sv.push({id:uid(),t:now(),tip:'Yan Mamül',urun:ad[uk],miktar:fkg(kg),alici:alici,temsilci:temsilci,birimFiyat:birimFiyat,toplamTutar:Math.round(birimFiyat*kg*100)/100,x:{stokKey:sm[uk],kg:kg}});
+  var el=g('sy_tem');if(el)el.value='';
+  var el2=g('sy_fiy');if(el2)el2.value='';
   var syAliEl=g('sy_ali'); if(syAliEl)syAliEl.value='';
   var syKgEl=g('sy_kg'); if(syKgEl)syKgEl.value='';
   g('sy_kg').value='';
@@ -2463,18 +2656,36 @@ function delL(lk,rid){
     }
     // ── AKTARIM geri al ──
     else if(lk==='ak'){
-      var src=findSilo(r.k);
-      var hds=findSilo(r.h);
-      if(src) src.kg=Math.min(src.cap||999999999, src.kg+r.kg);
-      if(hds) hds.kg=Math.max(0, hds.kg-r.kg);
+      if(r.h==='YK1'){
+        // Yıkama geri al — fabrika silolarına dağıt
+        if(!S.yikama) S.yikama={id:'YK1',nm:'Yıkama Silosu',kg:0};
+        S.yikama.kg=Math.max(0,S.yikama.kg-r.kg);
+        // siloKulYk ile fabrika silolarına geri dağıt
+        if(r.siloKulYk){
+          Object.keys(r.siloKulYk).forEach(function(sid){
+            var sf=S.fab.find(function(x){return x.id===sid;});
+            if(sf) sf.kg=Math.min(sf.cap,sf.kg+(r.siloKulYk[sid]||0));
+          });
+        }
+      } else {
+        var src=findSilo(r.k);
+        var hds=findSilo(r.h);
+        if(src) src.kg=Math.min(src.cap||999999999, src.kg+r.kg);
+        if(hds) hds.kg=Math.max(0, hds.kg-r.kg);
+      }
     }
     // ── ÜRETİM geri al ──
     else if(lk==='ur'){
       // Buğday: logdaki siloKul ile silo silo geri ekle
       if(r.siloKul){
         Object.keys(r.siloKul).forEach(function(sid){
-          var sf=S.fab.find(function(ff){return ff.id===sid;});
-          if(sf) sf.kg=Math.min(sf.cap, sf.kg+(r.siloKul[sid]||0));
+          if(sid==='YK1'){
+            if(!S.yikama) S.yikama={id:'YK1',nm:'Yıkama Silosu',kg:0};
+            S.yikama.kg+=(r.siloKul[sid]||0);
+          } else {
+            var sf=S.fab.find(function(ff){return ff.id===sid;});
+            if(sf) sf.kg=Math.min(sf.cap, sf.kg+(r.siloKul[sid]||0));
+          }
         });
       }
       // Un
@@ -2557,7 +2768,7 @@ function printRapor(){
 
   // Buğday verileri
   var topFab=0; S.fab.forEach(function(s){topFab+=s.kg;});
-  var topDis=0; S.dis.forEach(function(s){topDis+=s.kg;});
+  var topDis=0; S.dis.forEach(function(s){topDis+=s.kg;}); if(S.yikama)topDis+=S.yikama.kg;
 
   // Un verileri
   var topUnSilo=0; Object.keys(S.un).forEach(function(k){topUnSilo+=S.un[k];});
@@ -2623,6 +2834,16 @@ function printRapor(){
       +'</div>';
   });
   // Dış silolar
+  (function(){
+    var s=S.yikama||{kg:0,nm:'Yıkama Silosu'};
+    siloCards+='<div class="silo-kart" style="border-color:#e67e22">'
+      +'<div class="sk-id" style="color:#e67e22">🚿 YK</div>'
+      +'<div class="sk-nm">'+s.nm+'</div>'
+      +'<div class="sk-kg">'+fkg(s.kg)+'</div>'
+      +'<div class="sk-bos" style="color:#e67e22">Sınırsız</div>'
+      +'<div class="sk-bar"><div class="sk-fill" style="width:'+(s.kg>0?30:0)+'%;background:#e67e22"></div></div>'
+      +'</div>';
+  })();
   S.dis.forEach(function(s){
     siloCards+='<div class="silo-kart dis">'
       +'<div class="sk-id">'+s.id+'</div>'
@@ -3563,6 +3784,125 @@ function sistemSifirla(){
 
   sv(); rAll();
   alert('Sistem sıfırlandı. Tüm stoklar ve kayıtlar temizlendi.\nAmbalaj ve katkı tanımları korundu.');
+}
+
+// ═══════════════════════════════════════════════
+// SEVKİYAT RAPORU
+// ═══════════════════════════════════════════════
+function openSevkRapor(){
+  var bugun=new Date();
+  var fmt=function(d){return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();};
+  var b=g('svrap_bas'),bt=g('svrap_bit');
+  if(b&&!b.value)b.value=fmt(bugun);
+  if(bt&&!bt.value)bt.value=fmt(bugun);
+  svRapOzet();
+  var mod=g('sevkRapMod'); if(mod)mod.classList.add('on');
+}
+function svRapFiltrele(bas,bit){
+  return S.log.sv.filter(function(r){
+    if(!r.t)return false;
+    var p=r.t.split(' ')[0].split('.');
+    if(p.length<3)return true;
+    var rt=p[2]+'-'+(p[1].length<2?'0':'')+p[1]+'-'+(p[0].length<2?'0':'')+p[0];
+    if(bas&&rt<bas)return false;
+    if(bit&&rt>bit)return false;
+    return true;
+  });
+}
+function svRapOzet(){
+  var el=g('svrap_ozet'); if(!el)return;
+  var liste=svRapFiltrele(gv('svrap_bas'),gv('svrap_bit'));
+  if(!liste.length){el.innerHTML='<span style="color:var(--rd)">Kayıt bulunamadı.</span>';return;}
+  var top=0; liste.forEach(function(r){top+=r.toplamTutar||0;});
+  el.innerHTML='<b style="color:var(--gd)">'+liste.length+' sevkiyat</b> &nbsp;|&nbsp; Toplam: <b>'+top.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</b>';
+}
+function printSevkRapor(){
+  var bas=gv('svrap_bas'),bit=gv('svrap_bit');
+  var liste=svRapFiltrele(bas,bit);
+  if(!liste.length){alert('Bu tarih aralığında sevkiyat bulunamadı.');return;}
+  var now2=new Date();
+  var tarihStr=now2.toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var saatStr=now2.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+  var aralik=bas===bit?(bas||'Tüm Kayıtlar'):(bas||'Başlangıç')+' → '+(bit||'Bugün');
+  var temMap={}, topGenel=0, topAdetGenel=0;
+  liste.forEach(function(r){
+    var tem=r.temsilci||'Belirtilmemiş';
+    if(!temMap[tem])temMap[tem]={tem:tem,rows:[],topTutar:0,topAdet:0,fxm:0};
+    var adet=r.x&&r.x.adet?r.x.adet:(r.x&&r.x.kg?r.x.kg:0);
+    temMap[tem].rows.push({t:r.t,tip:r.tip,urun:r.urun,alici:r.alici||'—',miktar:r.miktar,fiy:r.birimFiyat||0,tut:r.toplamTutar||0,adet:adet});
+    temMap[tem].topTutar+=r.toplamTutar||0;
+    temMap[tem].topAdet+=adet;
+    if((r.birimFiyat||0)>0&&adet>0)temMap[tem].fxm+=(r.birimFiyat||0)*adet;
+    topGenel+=r.toplamTutar||0; topAdetGenel+=adet;
+  });
+  var css='*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:9.5pt;color:#1a1a1a}'
+    +'.rh{display:flex;justify-content:space-between;border-bottom:3px solid #1b4f72;padding-bottom:10px;margin-bottom:14px}'
+    +'.rlogo{font-size:15pt;font-weight:700;color:#1b4f72}.rlogo small{display:block;font-size:7.5pt;color:#2e86c1;font-weight:400;margin-top:2px}'
+    +'.rmeta{text-align:right;font-size:8pt;color:#555}.rmeta .rt{font-size:12pt;font-weight:700;color:#1b4f72}'
+    +'.ozet{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}'
+    +'.ok{border:1.5px solid #2e86c1;border-radius:4px;padding:8px;text-align:center}'
+    +'.okv{font-size:12pt;font-weight:700;color:#1b4f72}.okl{font-size:7pt;color:#2e86c1;text-transform:uppercase;margin-top:2px}'
+    +'.bolum{margin-bottom:14px;break-inside:avoid}'
+    +'.bb{background:#1b4f72;color:#fff;font-size:9pt;font-weight:700;padding:6px 10px;display:flex;justify-content:space-between}'
+    +'.bbs{font-weight:400;font-size:8pt;opacity:.9}'
+    +'table{width:100%;border-collapse:collapse;font-size:8.5pt}'
+    +'thead th{background:#D6EAF8;color:#1b4f72;text-align:left;padding:4px 8px;font-weight:700;border:1px solid #2e86c1}'
+    +'thead th.r{text-align:right}tbody td{padding:4px 8px;border:1px solid #ddd}'
+    +'tbody tr:nth-child(even){background:#EBF5FB}tbody td.r{text-align:right;font-weight:700}'
+    +'.tot td{background:#D6EAF8;font-weight:700;border-top:2px solid #2e86c1}'
+    +'.gtot td{background:#1b4f72;color:#fff;font-weight:700}.gtot td.r{text-align:right}'
+    +'.imza{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:18px;padding-top:12px;border-top:1px solid #2e86c1}'
+    +'.iz{text-align:center;font-size:8pt;color:#555}.izc{border-top:1px solid #333;margin-bottom:4px;margin-top:24px}'
+    +'.footer{text-align:center;font-size:7pt;color:#aaa;margin-top:10px;padding-top:6px;border-top:1px solid #eee}'
+    +'@media print{@page{size:A4 portrait;margin:10mm 12mm}}';
+  var ozet='<div class="ozet">'
+    +'<div class="ok"><div class="okv">'+liste.length+'</div><div class="okl">Toplam Sevkiyat</div></div>'
+    +'<div class="ok"><div class="okv">'+Object.keys(temMap).length+'</div><div class="okl">Temsilci</div></div>'
+    +'<div class="ok"><div class="okv">'+topAdetGenel.toLocaleString('tr-TR')+'</div><div class="okl">Toplam Adet/Kg</div></div>'
+    +'<div class="ok"><div class="okv" style="font-size:10pt">'+topGenel.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</div><div class="okl">Genel Toplam</div></div>'
+    +'</div>';
+  var bolumler='';
+  Object.values(temMap).forEach(function(tm){
+    var ortFiy=tm.topAdet>0?tm.fxm/tm.topAdet:0;
+    var rows=tm.rows.map(function(k){
+      return '<tr>'
+        +'<td style="font-size:7.5pt;white-space:nowrap">'+k.t+'</td>'
+        +'<td><span style="font-size:7pt;background:#D6EAF8;color:#1b4f72;padding:1px 5px;border-radius:8px">'+k.tip+'</span></td>'
+        +'<td>'+k.urun+'</td><td>'+k.alici+'</td>'
+        +'<td class="r">'+k.miktar+'</td>'
+        +'<td class="r">'+(k.fiy>0?k.fiy.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺':'—')+'</td>'
+        +'<td class="r" style="color:#1b4f72">'+(k.tut>0?k.tut.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺':'—')+'</td>'
+        +'</tr>';
+    }).join('');
+    bolumler+='<div class="bolum">'
+      +'<div class="bb">Temsilci: '+tm.tem
+        +'<span class="bbs">'+tm.rows.length+' satış &nbsp;|&nbsp; Ort: '+(ortFiy>0?ortFiy.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺':'—')+' &nbsp;|&nbsp; '+tm.topTutar.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</span>'
+      +'</div>'
+      +'<table><thead><tr>'
+        +'<th>Tarih/Saat</th><th>Tip</th><th>Ürün</th><th>Alıcı</th>'
+        +'<th class="r">Miktar</th><th class="r">Birim Fiyat</th><th class="r">Tutar</th>'
+      +'</tr></thead><tbody>'
+      +rows
+      +'<tr class="tot"><td colspan="6">'+tm.tem+' Toplam</td>'
+        +'<td class="r">'+tm.topTutar.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</td>'
+      +'</tr></tbody></table></div>';
+  });
+  var html='<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">'
+    +'<title>Sevkiyat Raporu — '+aralik+'</title><style>'+css+'</style></head><body>'
+    +'<div class="rh"><div class="rlogo">Arı Un Fabrikası<small>San. Tic. A.Ş. — Sevkiyat Raporu</small></div>'
+    +'<div class="rmeta"><div class="rt">'+aralik+'</div><div>'+tarihStr+' '+saatStr+'</div></div></div>'
+    +ozet+bolumler
+    +'<table><tbody><tr class="gtot"><td colspan="6">GENEL TOPLAM ('+liste.length+' sevkiyat)</td>'
+      +'<td class="r">'+topGenel.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</td></tr></tbody></table>'
+    +'<div class="imza"><div class="iz"><div class="izc"></div>Hazırlayan</div>'
+      +'<div class="iz"><div class="izc"></div>Kontrol Eden</div>'
+      +'<div class="iz"><div class="izc"></div>Onaylayan</div></div>'
+    +'<div class="footer">Arı Un Fabrikası — '+tarihStr+' '+saatStr+'</div>'
+    +'</body></html>';
+  var modEl=g('sevkRapMod'); if(modEl)modEl.classList.remove('on');
+  var w=window.open('','_blank','width=1100,height=800');
+  w.document.write(html); w.document.close();
+  w.onload=function(){w.focus();w.print();};
 }
 
 // ═══════════════════════════════════════════════
