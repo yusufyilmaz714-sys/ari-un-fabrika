@@ -1231,10 +1231,10 @@ function gP(p,btn){
   document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('active');});
   var pg=g('pg_'+p); if(pg)pg.classList.add('active');
   if(btn)btn.classList.add('active');
-  // Üretim Geçmişi kartını sadece üretim sayfasında göster
+  rAll();
+  // Üretim Geçmişi kartını sadece üretim sayfasında göster — rAll'dan sonra
   var urGecmis=g('ur_gecmis_kart');
   if(urGecmis)urGecmis.style.display=(p==='uretim'?'block':'none');
-  rAll();
 }
 function swT(cont,target){
   var c=g(cont); if(!c)return;
@@ -1693,12 +1693,12 @@ function rYan(cid){
   var c=g(cid); if(!c)return;
   var KAP=30000;
   c.innerHTML=
-    '<div class="stat"><div class="v">'+fkg(S.ks)+'</div><div class="l">Kepek Silo</div>'
+    '<div class="stat"><div class="v" style="color:'+(S.ks>=KAP?'var(--rd)':S.ks/KAP>.8?'var(--gdl)':'')+'">'+fkg(S.ks)+'</div><div class="l">Kepek Silo</div>'
     +'<div class="pb"><div class="pf'+(S.ks/KAP>.9?' warn':'')+'" style="width:'+Math.min(100,S.ks/KAP*100)+'%"></div></div>'
-    +'<div class="s">Kapasite: 30.000 Kg</div></div>'
-    +'<div class="stat"><div class="v">'+fkg(S.rs)+'</div><div class="l">Razmol Silo</div>'
+    +'<div class="s">Boş: '+fkg(Math.max(0,KAP-S.ks))+' / 30.000 Kg</div></div>'
+    +'<div class="stat"><div class="v" style="color:'+(S.rs>=KAP?'var(--rd)':S.rs/KAP>.8?'var(--gdl)':'')+'">'+fkg(S.rs)+'</div><div class="l">Razmol Silo</div>'
     +'<div class="pb"><div class="pf'+(S.rs/KAP>.9?' warn':'')+'" style="width:'+Math.min(100,S.rs/KAP*100)+'%"></div></div>'
-    +'<div class="s">Kapasite: 30.000 Kg</div></div>'
+    +'<div class="s">Boş: '+fkg(Math.max(0,KAP-S.rs))+' / 30.000 Kg</div></div>'
     +'<div class="stat"><div class="v">'+fkg(S.kc)+'</div><div class="l">Kepek Çuval/Depo</div></div>'
     +'<div class="stat"><div class="v">'+fkg(S.rc)+'</div><div class="l">Razmol Çuval/Depo</div></div>'
     +'<div class="stat"><div class="v">'+fkg(S.bk)+'</div><div class="l">Bonkalite</div></div>'
@@ -2324,8 +2324,18 @@ function doUretim(){
   var kul=[], pSum=100;
   var u1m=gv('ur_u1m'),u1k=gn('ur_u1k'),u2m=gv('ur_u2m'),u2k=gn('ur_u2k');
   var ks=gn('ur_ks'),kc=gn('ur_kc'),rs=gn('ur_rs'),rc=gn('ur_rc'),bk=gn('ur_bk'),kb=gn('ur_kb');
-  if(S.ks+ks>30000){showA('ur_al','Kepek silo kapasitesi aşılıyor!',false);return;}
-  if(S.rs+rs>30000){showA('ur_al','Razmol silo kapasitesi aşılıyor!',false);return;}
+  // Kepek/Razmol silo kapasitesi kontrolü — aşılıyorsa daha açık mesaj ver
+  var KAP_SLO=30000;
+  if(ks>0&&S.ks+ks>KAP_SLO){
+    var bos_ks=Math.max(0,KAP_SLO-S.ks);
+    showA('ur_al','⚠️ Kepek silosu kapasitesi aşılıyor! Boş alan: '+fkg(bos_ks)+' / Girilmek istenen: '+fkg(ks)+'. Kepek Siloya miktarını azaltın veya Kepek Çuvala yönlendirin.',false);
+    return;
+  }
+  if(rs>0&&S.rs+rs>KAP_SLO){
+    var bos_rs=Math.max(0,KAP_SLO-S.rs);
+    showA('ur_al','⚠️ Razmol silosu kapasitesi aşılıyor! Boş alan: '+fkg(bos_rs)+' / Girilmek istenen: '+fkg(rs)+'. Razmol Siloya miktarını azaltın veya Razmol Çuvala yönlendirin.',false);
+    return;
+  }
   // Ambalaj kontrol
   function chkAmb(kgVal,selId,tipAd){
     if(kgVal<=0)return {ok:true};
@@ -2796,6 +2806,13 @@ function delL(lk,rid){
         if(!S.un[r.marka])S.un[r.marka]=0;
         S.un[r.marka]+=r.adet*r.akg;
       }
+      // Katkı iadesi
+      if(r.katKul&&r.katKul.length){
+        r.katKul.forEach(function(kk){
+          var kkObj=S.kat.find(function(x){return x.id===kk.katId;});
+          if(kkObj) kkObj.stok+=kk.kulKg||0;
+        });
+      }
       // Depodan sil (eğer depoya alınmışsa)
       if(r.tip==='depo'){
         var kalan=r.adet;
@@ -2825,6 +2842,14 @@ function delL(lk,rid){
           if(!S.un[x.marka])S.un[x.marka]=0;
           S.un[x.marka]+=(x.adet||0)*(x.akg||0);
         }
+        // Katkı iadesi — paketleme logundaki katKul'dan al
+        var pkLog=S.log.pk.find(function(p){return p.tip==='sevk'&&p.marka===x.marka&&p.aad===x.aad&&p.adet===x.adet;});
+        if(pkLog&&pkLog.katKul&&pkLog.katKul.length){
+          pkLog.katKul.forEach(function(kk){
+            var kkObj=S.kat.find(function(xx){return xx.id===kk.katId;});
+            if(kkObj) kkObj.stok+=kk.kulKg||0;
+          });
+        }
       } else if(r.tip==='Yan Mamül'){
         if(x.stokKey&&x.kg){
           S[x.stokKey]=S[x.stokKey]+(x.kg||0);
@@ -2846,12 +2871,10 @@ function printRapor(){
   var tarih=now2.toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   var saat=now2.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
 
-  // Buğday verileri
+  // ── Verileri hazırla ──────────────────────────────
   var topFab=0; S.fab.forEach(function(s){topFab+=s.kg;});
   var topDis=0; S.dis.forEach(function(s){topDis+=s.kg;}); if(S.yikama)topDis+=S.yikama.kg;
 
-  // Un verileri
-  var topUnSilo=0; Object.keys(S.un).forEach(function(k){topUnSilo+=S.un[k];});
   var depMap={};
   S.depo.forEach(function(r){
     var k=r.marka+'||'+r.aad+'||'+r.akg;
@@ -2860,206 +2883,292 @@ function printRapor(){
   });
   var topUnDepo=0; Object.values(depMap).forEach(function(v){topUnDepo+=v.adet*v.akg;});
 
-  // CSS
-  var css=[
-    'body{font-family:Georgia,serif;color:#1a1a1a;font-size:10.5pt;line-height:1.45}',
-    '.rap-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #5C3D1E;padding-bottom:10px;margin-bottom:16px}',
-    '.rap-logo{font-size:18pt;font-weight:700;color:#5C3D1E;letter-spacing:1px}',
-    '.rap-logo small{display:block;font-size:8pt;color:#7A5230;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;font-weight:400;margin-top:2px}',
-    '.rap-meta{text-align:right;font-size:8.5pt;color:#555;font-family:Arial,sans-serif}',
-    '.rap-meta .tarih{font-size:11pt;font-weight:700;color:#5C3D1E}',
-    '.bolum{margin-bottom:14px;break-inside:avoid}',
-    '.bolum-baslik{background:#5C3D1E;color:#E2C97E;font-size:9.5pt;font-weight:700;padding:5px 10px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:0;font-family:Arial,sans-serif}',
-    'table{width:100%;border-collapse:collapse;font-size:9.5pt}',
-    'thead th{background:#EDE0C0;color:#5C3D1E;text-align:left;padding:5px 8px;font-weight:700;border:1px solid #C9A84C;font-family:Arial,sans-serif;font-size:8.5pt;text-transform:uppercase;letter-spacing:.3px}',
-    'thead th.r{text-align:right}',
-    'tbody td{padding:4px 8px;border:1px solid #ddd;vertical-align:middle}',
-    'tbody td.r{text-align:right;font-weight:700}',
-    'tbody tr:nth-child(even){background:#FDFAF3}',
-    '.toplam-row td{background:#F5EDD6;font-weight:700;border-top:2px solid #C9A84C}',
-    '.ozet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}',
-    '.ozet-kart{border:1.5px solid #C9A84C;border-radius:5px;padding:8px 10px;text-align:center;break-inside:avoid}',
-    '.ozet-kart .ok-val{font-size:14pt;font-weight:700;color:#5C3D1E}',
-    '.ozet-kart .ok-lbl{font-size:7.5pt;color:#7A5230;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;font-family:Arial,sans-serif}',
-    '.ozet-kart .ok-sub{font-size:7pt;color:#999;margin-top:1px;font-family:Arial,sans-serif}',
-    '.silo-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-top:0}',
-    '.silo-kart{border:1px solid #C9A84C;border-radius:3px;padding:5px 3px;text-align:center;background:#FDFAF3;break-inside:avoid}',
-    '.silo-kart.empty{border-style:dashed;opacity:.6}',
-    '.silo-kart.dis{border-color:#7eb8e5;background:#f0f8ff}',
-    '.sk-id{font-size:7pt;color:#7A5230;font-weight:700;font-family:Arial,sans-serif}',
-    '.sk-nm{font-size:6pt;color:#888;height:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}',
-    '.sk-kg{font-size:8.5pt;font-weight:700;color:#1a1a1a}',
-    '.sk-bos{font-size:6pt;color:#aaa}',
-    '.sk-bar{height:3px;background:#ddd;border-radius:2px;margin-top:3px;overflow:hidden}',
-    '.sk-fill{height:100%;background:#C9A84C;border-radius:2px}',
-    '.sk-fill.warn{background:#A63228}',
-    '.imza{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:24px;padding-top:16px;border-top:1px solid #C9A84C}',
-    '.imza-alan{text-align:center;font-size:8pt;color:#555;font-family:Arial,sans-serif}',
-    '.imza-cizgi{border-top:1px solid #1a1a1a;margin-bottom:4px;margin-top:28px}',
-    '.footer{text-align:center;font-size:7.5pt;color:#aaa;margin-top:12px;padding-top:8px;border-top:1px solid #eee;font-family:Arial,sans-serif}',
-    '.uyari{background:#FFF8E1;border-left:3px solid #C9A84C;padding:5px 8px;font-size:8pt;color:#7A5230;margin:5px 0;font-family:Arial,sans-serif}'
-  ].join(' ');
+  // ── CSS ───────────────────────────────────────────
+  var css='*{margin:0;padding:0;box-sizing:border-box}'
+    +'body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#111;background:#fff;line-height:1.4}'
 
-  // Fabrika silo tablosu
-  var siloCards='';
+    // Sayfa bölümü
+    +'@media print{'
+      +'@page{size:A4 portrait;margin:12mm 14mm}'
+      +'.sayfa2{page-break-before:always}'
+    +'}'
+
+    // Header
+    +'.hd{display:flex;justify-content:space-between;align-items:flex-end;'
+      +'padding-bottom:8px;border-bottom:2.5px solid #1a1a1a;margin-bottom:14px}'
+    +'.hd-sol .firma{font-size:14pt;font-weight:900;letter-spacing:-.5px;color:#111}'
+    +'.hd-sol .alt{font-size:7.5pt;color:#666;margin-top:1px;letter-spacing:.5px;text-transform:uppercase}'
+    +'.hd-sag{text-align:right}'
+    +'.hd-sag .rapor-adi{font-size:10pt;font-weight:700;color:#111}'
+    +'.hd-sag .tarih-kucuk{font-size:7.5pt;color:#777;margin-top:2px}'
+
+    // Sayfa başlığı
+    +'.blk-baslik{font-size:7pt;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;'
+      +'color:#fff;background:#111;padding:4px 10px;margin-bottom:0}'
+    +'.blk-baslik.kahve{background:#5C3D1E}'
+    +'.blk-baslik.yesil{background:#1e5631}'
+    +'.blk-baslik.lacivert{background:#1a3a5c}'
+    +'.blk-baslik.turuncu{background:#7d3c0f}'
+    +'.blk-baslik.gri{background:#444}'
+
+    // Tablo
+    +'table{width:100%;border-collapse:collapse;margin-bottom:14px}'
+    +'thead tr{background:#f2f2f2;border-top:1.5px solid #111;border-bottom:1.5px solid #111}'
+    +'thead th{padding:5px 8px;font-size:7.5pt;font-weight:700;text-align:left;letter-spacing:.3px;text-transform:uppercase;color:#333}'
+    +'thead th.r{text-align:right}'
+    +'tbody td{padding:5px 8px;font-size:8.5pt;border-bottom:1px solid #e8e8e8}'
+    +'tbody td.r{text-align:right}'
+    +'tbody td.bold{font-weight:700}'
+    +'tbody tr:hover{background:#fafafa}'
+
+    // Özel satır renkleri
+    +'.row-yk{background:#FFF8F0!important}'
+    +'.row-dis{background:#F0F7FF!important}'
+    +'.row-toplam{background:#f7f7f7!important;border-top:1.5px solid #bbb!important;border-bottom:1.5px solid #bbb!important}'
+    +'.row-toplam td{font-weight:700;font-size:9pt}'
+
+    // Renkli değerler
+    +'.val-sifir{color:#bbb}'
+    +'.val-yk{color:#b95000;font-weight:700}'
+    +'.val-dis{color:#1a5276;font-weight:700}'
+    +'.val-bos{color:#2e7d32}'
+
+    // Badge (konum etiketi)
+    +'.badge{display:inline-block;font-size:6.5pt;font-weight:700;padding:1px 7px;border-radius:3px;letter-spacing:.3px}'
+    +'.badge-silo{background:#EDE0C0;color:#5C3D1E}'
+    +'.badge-cuval{background:#D6EAF8;color:#1a3a5c}'
+
+    // İki kolon layout (ambalaj + katkı)
+    +'.iki-kolon{display:grid;grid-template-columns:1fr 1fr;gap:20px}'
+
+    // Sayfa no
+    +'.sayfa-no{font-size:7pt;color:#aaa;text-align:right;margin-top:6px}'
+
+    // İmza
+    +'.imza{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:20px;padding-top:14px;border-top:1.5px solid #ccc}'
+    +'.imza-alan{text-align:center}'
+    +'.imza-cizgi{border-top:1px solid #555;margin-bottom:4px;margin-top:26px}'
+    +'.imza-lbl{font-size:7.5pt;color:#666;text-transform:uppercase;letter-spacing:.5px}';
+
+  // ── Header HTML (her iki sayfada tekrar) ─────────
+  function header(sayfa){
+    return '<div class="hd">'
+      +'<div class="hd-sol"><div class="firma">Arı Un Fabrikası</div>'
+        +'<div class="alt">San. Tic. A.Ş. &nbsp;·&nbsp; Günlük Stok Raporu</div></div>'
+      +'<div class="hd-sag"><div class="rapor-adi">'+tarih+'</div>'
+        +'<div class="tarih-kucuk">Saat: '+saat+' &nbsp;·&nbsp; Sayfa '+sayfa+'/2</div></div>'
+      +'</div>';
+  }
+
+  // ── SAYFA 1: Buğday / Un / Yan Mamül ─────────────
+
+  // Buğday tablosu
+  var bugdayRows='';
+  var topBugdayBos=0;
   S.fab.forEach(function(s){
-    var pct=Math.min(100,s.kg/s.cap*100);
-    var warn=pct>90;
-    siloCards+='<div class="silo-kart'+(s.kg===0?' empty':'')+'">'
-      +'<div class="sk-id">'+s.id+'</div>'
-      +'<div class="sk-nm" title="'+(s.nm||'')+'">'+( s.nm||'—')+'</div>'
-      +'<div class="sk-kg">'+fkg(s.kg)+'</div>'
-      +'<div class="sk-bos">Boş: '+fkg(s.cap-s.kg)+'</div>'
-      +'<div class="sk-bar"><div class="sk-fill'+(warn?' warn':'')+'" style="width:'+pct+'%"></div></div>'
-      +'</div>';
+    topBugdayBos+=s.cap-s.kg;
+    bugdayRows+='<tr>'
+      +'<td class="bold" style="color:#5C3D1E">'+s.id+'</td>'
+      +'<td>'+(s.nm||'<span style="color:#bbb">—</span>')+'</td>'
+      +'<td class="r'+(s.kg===0?' val-sifir':' bold')+'">'+fkg(s.kg)+'</td>'
+      +'<td class="r val-bos">'+fkg(s.cap-s.kg)+'</td>'
+      +'</tr>';
   });
-  // Dış silolar
-  (function(){
-    var s=S.yikama||{kg:0,nm:'Yıkama Silosu'};
-    siloCards+='<div class="silo-kart" style="border-color:#e67e22">'
-      +'<div class="sk-id" style="color:#e67e22">🚿 YK</div>'
-      +'<div class="sk-nm">'+s.nm+'</div>'
-      +'<div class="sk-kg">'+fkg(s.kg)+'</div>'
-      +'<div class="sk-bos" style="color:#e67e22">Sınırsız</div>'
-      +'<div class="sk-bar"><div class="sk-fill" style="width:'+(s.kg>0?30:0)+'%;background:#e67e22"></div></div>'
-      +'</div>';
-  })();
+  bugdayRows+='<tr class="row-yk">'
+    +'<td class="bold val-yk">🚿 YK1</td>'
+    +'<td>'+(S.yikama?S.yikama.nm:'Yıkama Silosu')+'</td>'
+    +'<td class="r val-yk">'+fkg(S.yikama?S.yikama.kg:0)+'</td>'
+    +'<td class="r" style="color:#bbb;font-style:italic">Sınırsız</td>'
+    +'</tr>';
   S.dis.forEach(function(s){
-    siloCards+='<div class="silo-kart dis">'
-      +'<div class="sk-id">'+s.id+'</div>'
-      +'<div class="sk-nm">'+s.nm+'</div>'
-      +'<div class="sk-kg">'+fkg(s.kg)+'</div>'
-      +'<div class="sk-bos" style="color:#7eb8e5">Sınırsız</div>'
-      +'<div class="sk-bar"><div class="sk-fill" style="width:'+(s.kg>0?30:0)+'%;background:#7eb8e5"></div></div>'
-      +'</div>';
+    bugdayRows+='<tr class="row-dis">'
+      +'<td class="bold val-dis">'+s.id+'</td>'
+      +'<td>'+s.nm+'</td>'
+      +'<td class="r val-dis">'+fkg(s.kg)+'</td>'
+      +'<td class="r" style="color:#bbb;font-style:italic">Sınırsız</td>'
+      +'</tr>';
   });
+  bugdayRows+='<tr class="row-toplam">'
+    +'<td colspan="2">Toplam</td>'
+    +'<td class="r">'+fkg(topFab+topDis)+'</td>'
+    +'<td class="r val-bos">'+fkg(topBugdayBos)+'</td>'
+    +'</tr>';
 
-  // Un silo satırları
+  // Un silo tablosu
   var unSiloRows='';
+  var unTopKg=0;
   var unMarks=Object.keys(S.un).filter(function(m){return S.un[m]>0;});
   if(unMarks.length){
     unMarks.forEach(function(m){
-      unSiloRows+='<tr><td>'+m+'</td><td>Un Silosu</td><td class="r">'+fkg(S.un[m])+'</td></tr>';
+      var kg=S.un[m]; unTopKg+=kg;
+      unSiloRows+='<tr>'
+        +'<td class="bold">'+m+'</td>'
+        +'<td class="r bold">'+fkg(kg)+'</td>'
+        +'<td class="r" style="color:#555">'+Math.floor(kg/50).toLocaleString('tr-TR')+' adet</td>'
+        +'</tr>';
     });
-  } else { unSiloRows='<tr><td colspan="3" style="text-align:center;color:#aaa">Un silosu boş</td></tr>'; }
+    unSiloRows+='<tr class="row-toplam"><td>Toplam</td>'
+      +'<td class="r">'+fkg(unTopKg)+'</td>'
+      +'<td class="r" style="color:#555">'+Math.floor(unTopKg/50).toLocaleString('tr-TR')+' adet</td>'
+      +'</tr>';
+  } else {
+    unSiloRows='<tr><td colspan="3" style="text-align:center;color:#bbb;padding:10px 0">Boş</td></tr>';
+  }
 
-  // Un depo satırları
+  // Un depo tablosu
   var unDepoRows='';
   var depVals=Object.values(depMap).filter(function(v){return v.adet>0;});
+  var topUnDepoAdet=0;
   if(depVals.length){
     depVals.forEach(function(v){
-      unDepoRows+='<tr><td>'+v.marka+'</td><td>'+v.aad+'</td><td class="r">'+v.adet.toLocaleString('tr-TR')+' adet</td><td class="r">'+fkg(v.adet*v.akg)+'</td></tr>';
+      topUnDepoAdet+=v.adet;
+      unDepoRows+='<tr>'
+        +'<td class="bold">'+v.marka+'</td>'
+        +'<td>'+v.aad+'</td>'
+        +'<td class="r">'+v.adet.toLocaleString('tr-TR')+' adet</td>'
+        +'<td class="r bold">'+fkg(v.adet*v.akg)+'</td>'
+        +'</tr>';
     });
-    unDepoRows+='<tr class="toplam-row"><td colspan="3">TOPLAM DEPO</td><td class="r">'+fkg(topUnDepo)+'</td></tr>';
-  } else { unDepoRows='<tr><td colspan="4" style="text-align:center;color:#aaa">Depo boş</td></tr>'; }
+    unDepoRows+='<tr class="row-toplam"><td colspan="2">Toplam</td>'
+      +'<td class="r">'+topUnDepoAdet.toLocaleString('tr-TR')+' adet</td>'
+      +'<td class="r">'+fkg(topUnDepo)+'</td>'
+      +'</tr>';
+  } else {
+    unDepoRows='<tr><td colspan="4" style="text-align:center;color:#bbb;padding:10px 0">Boş</td></tr>';
+  }
 
-  // Yan mamül tablosu
+  // Yan mamül — ambalaj kg
+  var kepekAmbKg=40, razmolAmbKg=50;
+  var bkAmb=S.amb.find(function(a){return a.tip==='bonkalite';})||{kg:50};
+  var kbAmb=S.amb.find(function(a){return a.tip==='kirik';})||{kg:50};
+
+  function yanSatir(urun,konum,kg,ambKg){
+    var isSilo=konum==='Silo';
+    var adetStr=(!isSilo&&ambKg>0)?Math.floor(kg/ambKg).toLocaleString('tr-TR')+' adet':'—';
+    return '<tr>'
+      +'<td class="bold">'+urun+'</td>'
+      +'<td><span class="badge '+(isSilo?'badge-silo':'badge-cuval')+'">'+konum+'</span></td>'
+      +'<td class="r'+(kg===0?' val-sifir':' bold')+'">'+fkg(kg)+'</td>'
+      +'<td class="r" style="color:'+(isSilo?'#bbb':'#555')+'">'+(kg===0&&!isSilo?'—':adetStr)+'</td>'
+      +'</tr>';
+  }
+
   var yanRows=''
-    +'<tr><td>Kepek</td><td>Silo</td><td class="r">'+fkg(S.ks)+'</td></tr>'
-    +'<tr><td>Kepek</td><td>Çuval/Depo</td><td class="r">'+fkg(S.kc)+'</td></tr>'
-    +'<tr class="toplam-row"><td colspan="2">TOPLAM KEPEK</td><td class="r">'+fkg(S.ks+S.kc)+'</td></tr>'
-    +'<tr><td>Razmol</td><td>Silo</td><td class="r">'+fkg(S.rs)+'</td></tr>'
-    +'<tr><td>Razmol</td><td>Çuval/Depo</td><td class="r">'+fkg(S.rc)+'</td></tr>'
-    +'<tr class="toplam-row"><td colspan="2">TOPLAM RAZMOL</td><td class="r">'+fkg(S.rs+S.rc)+'</td></tr>'
-    +'<tr><td>Bonkalite</td><td>Çuval/Depo</td><td class="r">'+fkg(S.bk)+'</td></tr>'
-    +'<tr><td>Kırık Buğday</td><td>Çuval/Depo</td><td class="r">'+fkg(S.kb)+'</td></tr>';
+    +yanSatir('Kepek','Silo',S.ks,0)
+    +yanSatir('Kepek','Çuval/Depo',S.kc,kepekAmbKg)
+    +yanSatir('Razmol','Silo',S.rs,0)
+    +yanSatir('Razmol','Çuval/Depo',S.rc,razmolAmbKg)
+    +yanSatir('Bonkalite','Çuval/Depo',S.bk,bkAmb.kg)
+    +yanSatir('Kırık Buğday','Çuval/Depo',S.kb,kbAmb.kg);
 
-  // Ambalaj tablosu
+  // ── SAYFA 2: Ambalaj / Katkı ─────────────────────
   var ambRows='';
   S.amb.forEach(function(a){
-    ambRows+='<tr><td>'+a.ad+'</td><td class="r">'+a.kg+' kg</td><td>'+a.tip+'</td><td class="r">'+a.stok.toLocaleString('tr-TR')+' adet</td></tr>';
+    ambRows+='<tr>'
+      +'<td class="bold">'+a.ad+'</td>'
+      +'<td class="r">'+a.kg+' kg</td>'
+      +'<td class="r bold">'+a.stok.toLocaleString('tr-TR')+' adet</td>'
+      +'</tr>';
   });
-  if(!S.amb.length) ambRows='<tr><td colspan="4" style="text-align:center;color:#aaa">Kayıt yok</td></tr>';
+  if(!S.amb.length) ambRows='<tr><td colspan="3" style="text-align:center;color:#bbb;padding:10px 0">Kayıt yok</td></tr>';
 
-  // Katkı tablosu
   var katRows='';
   S.kat.forEach(function(k){
-    katRows+='<tr><td>'+k.ad+'</td><td class="r">'+k.stok.toFixed(3)+' Kg</td></tr>';
+    katRows+='<tr>'
+      +'<td class="bold">'+k.ad+'</td>'
+      +'<td class="r bold">'+k.stok.toFixed(3)+' kg</td>'
+      +'</tr>';
   });
-  if(!S.kat.length) katRows='<tr><td colspan="2" style="text-align:center;color:#aaa">Kayıt yok</td></tr>';
+  if(!S.kat.length) katRows='<tr><td colspan="2" style="text-align:center;color:#bbb;padding:10px 0">Kayıt yok</td></tr>';
 
-  // Rapor HTML
+  // ── HTML birleştir ────────────────────────────────
   var html='<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">'
-    +'<title>Günlük Stok Raporu — '+tarih+'</title>'
+    +'<title>Stok Raporu — '+tarih+'</title>'
     +'<style>'+css+'</style></head><body>'
 
-    // Başlık
-    +'<div class="rap-header">'
-      +'<div class="rap-logo">🌾 Arı Un Fabrikası<small>San. Tic. A.Ş. — Günlük Stok Raporu</small></div>'
-      +'<div class="rap-meta"><div class="tarih">'+tarih+'</div><div>Saat: '+saat+'</div><div style="margin-top:3px;font-size:7.5pt">Arı Un Fabrikası Stok Takip Sistemi</div></div>'
-    +'</div>'
-
-    // Özet kartlar
-    +'<div class="ozet-grid">'
-      +'<div class="ozet-kart"><div class="ok-val">'+fkg(topFab+topDis)+'</div><div class="ok-lbl">Toplam Buğday</div><div class="ok-sub">Fab: '+fkg(topFab)+' | Dış: '+fkg(topDis)+'</div></div>'
-      +'<div class="ozet-kart"><div class="ok-val">'+fkg(topUnSilo+topUnDepo)+'</div><div class="ok-lbl">Toplam Un</div><div class="ok-sub">Silo: '+fkg(topUnSilo)+' | Depo: '+fkg(topUnDepo)+'</div></div>'
-      +'<div class="ozet-kart"><div class="ok-val">'+fkg(S.ks+S.kc+S.rs+S.rc+S.bk+S.kb)+'</div><div class="ok-lbl">Toplam Yan Mamül</div><div class="ok-sub">Kepek+Razmol+Bonk.+Kırık</div></div>'
-    +'</div>'
+    // ════ SAYFA 1 ════
+    +header('1')
 
     // Buğday Siloları
-    +'<div class="bolum">'
-      +'<div class="bolum-baslik">🌾 Buğday Siloları</div>'
-      +'<div class="silo-grid">'+siloCards+'</div>'
-    +'</div>'
+    +'<div class="blk-baslik kahve">Buğday Siloları</div>'
+    +'<table>'
+      +'<thead><tr>'
+        +'<th>Silo No</th><th>İçerik Adı</th>'
+        +'<th class="r">Mevcut (Kg)</th><th class="r">Boş (Kg)</th>'
+      +'</tr></thead>'
+      +'<tbody>'+bugdayRows+'</tbody>'
+    +'</table>'
 
-    // Un - Silo
-    +'<div class="bolum">'
-      +'<div class="bolum-baslik">🏭 Un Stokları — Silo</div>'
-      +'<table><thead><tr><th>Marka</th><th>Konum</th><th class="r">Miktar</th></tr></thead>'
+    // Un Silo
+    +'<div class="blk-baslik yesil">Un Stokları — Silo</div>'
+    +'<table>'
+      +'<thead><tr>'
+        +'<th>Marka</th><th class="r">Miktar (Kg)</th><th class="r">Adet (50 kg)</th>'
+      +'</tr></thead>'
       +'<tbody>'+unSiloRows+'</tbody>'
-      +(topUnSilo>0?'<tfoot><tr class="toplam-row"><td colspan="2">TOPLAM SİLO</td><td class="r">'+fkg(topUnSilo)+'</td></tr></tfoot>':'')
-      +'</table>'
-    +'</div>'
+    +'</table>'
 
-    // Un - Depo
-    +'<div class="bolum">'
-      +'<div class="bolum-baslik">📦 Un Stokları — Depo (Paketli)</div>'
-      +'<table><thead><tr><th>Marka</th><th>Ambalaj</th><th class="r">Adet</th><th class="r">Toplam Kg</th></tr></thead>'
+    // Un Depo
+    +'<div class="blk-baslik yesil">Un Stokları — Depo (Paketli)</div>'
+    +'<table>'
+      +'<thead><tr>'
+        +'<th>Marka</th><th>Ambalaj</th><th class="r">Adet</th><th class="r">Toplam (Kg)</th>'
+      +'</tr></thead>'
       +'<tbody>'+unDepoRows+'</tbody>'
-      +'</table>'
-    +'</div>'
+    +'</table>'
 
     // Yan Mamül
-    +'<div class="bolum">'
-      +'<div class="bolum-baslik">🏪 Yan Mamül Stokları</div>'
-      +'<table><thead><tr><th>Ürün</th><th>Konum</th><th class="r">Miktar</th></tr></thead>'
+    +'<div class="blk-baslik lacivert">Yan Mamül Stokları</div>'
+    +'<table>'
+      +'<thead><tr>'
+        +'<th>Ürün</th><th>Konum</th><th class="r">Miktar (Kg)</th><th class="r">Adet</th>'
+      +'</tr></thead>'
       +'<tbody>'+yanRows+'</tbody>'
+    +'</table>'
+
+    +'<div class="sayfa-no">Sayfa 1 / 2</div>'
+
+    // ════ SAYFA 2 ════
+    +'<div class="sayfa2">'
+    +header('2')
+
+    +'<div class="iki-kolon">'
+
+    // Ambalaj
+    +'<div>'
+      +'<div class="blk-baslik turuncu">Ambalaj Stokları</div>'
+      +'<table>'
+        +'<thead><tr>'
+          +'<th>Ambalaj Adı</th><th class="r">Kg</th><th class="r">Stok (Adet)</th>'
+        +'</tr></thead>'
+        +'<tbody>'+ambRows+'</tbody>'
       +'</table>'
     +'</div>'
 
-    // Ambalaj & Katkı yan yana
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;break-inside:avoid">'
-      +'<div class="bolum">'
-        +'<div class="bolum-baslik">🗂 Ambalaj Stokları</div>'
-        +'<table><thead><tr><th>Ambalaj Adı</th><th class="r">Kg</th><th>Tip</th><th class="r">Stok</th></tr></thead>'
-        +'<tbody>'+ambRows+'</tbody>'
-        +'</table>'
-      +'</div>'
-      +'<div class="bolum">'
-        +'<div class="bolum-baslik">🧪 Katkı Stokları</div>'
-        +'<table><thead><tr><th>Katkı Adı</th><th class="r">Stok (Kg)</th></tr></thead>'
+    // Katkı
+    +'<div>'
+      +'<div class="blk-baslik gri">Katkı Stokları</div>'
+      +'<table>'
+        +'<thead><tr>'
+          +'<th>Katkı Adı</th><th class="r">Stok (Kg)</th>'
+        +'</tr></thead>'
         +'<tbody>'+katRows+'</tbody>'
-        +'</table>'
-      +'</div>'
+      +'</table>'
     +'</div>'
 
-    // İmza alanları
-    +'<div class="imza">'
-      +'<div class="imza-alan"><div class="imza-cizgi"></div>Hazırlayan</div>'
-      +'<div class="imza-alan"><div class="imza-cizgi"></div>Kontrol Eden</div>'
-      +'<div class="imza-alan"><div class="imza-cizgi"></div>Onaylayan</div>'
-    +'</div>'
+    +'</div>'// iki-kolon
 
-    +'<div class="footer">Bu rapor '+tarih+' tarihinde saat '+saat+' itibarıyla Arı Un Fabrikası Stok Takip Sistemi tarafından otomatik oluşturulmuştur.</div>'
 
+    +'<div class="sayfa-no">Sayfa 2 / 2 &nbsp;·&nbsp; Arı Un Fabrikası Stok Takip Sistemi &nbsp;·&nbsp; '+tarih+' '+saat+'</div>'
+
+    +'</div>'// sayfa2
     +'</body></html>';
 
-  // Yeni pencerede aç ve yazdır
   var w=window.open('','_blank','width=900,height=700');
-  w.document.write(html);
-  w.document.close();
+  w.document.write(html); w.document.close();
   w.onload=function(){w.focus();w.print();};
 }
+
 
 // ═══════════════════════════════════════════════
 // ÜRETİM RAPORU
@@ -4185,7 +4294,7 @@ window.addEventListener('resize',adaptMobil);
 window.addEventListener('DOMContentLoaded',function(){
   adaptMobil();
   var urGecmis=g('ur_gecmis_kart');
-  if(urGecmis)urGecmis.style.display='none';
+  if(urGecmis)urGecmis.style.display='none'; // Başlangıçta gizle
   // Fonksiyonları global scope'a expose et (Firebase module erişimi için)
   window.S = S;
   window.defState = defState;
