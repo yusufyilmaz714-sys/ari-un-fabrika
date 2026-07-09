@@ -444,6 +444,7 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
         <button onclick="openHareketRapor();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">📋 Hareket Raporu</button>
         <button onclick="openDuzRapor();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">✏️ Düzenleme Raporu</button>
         <button onclick="printEnvanter();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:var(--crm);font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">📃 Envanter Listesi</button>
+        <button onclick="openTahsilatRapor();mobRapKapat()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;border-bottom:1px solid var(--brm);color:#7ec87a;font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">💰 Tahsilat Raporu</button>
         <button onclick="sistemSifirla()" style="display:block;width:100%;text-align:left;padding:12px 16px;background:transparent;border:none;color:#e57373;font-family:'Lato',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer">🗑️ Sistemi Sıfırla</button>
       </div>
     </div>
@@ -1850,12 +1851,13 @@ function rDepo(bid){
     if(!map[k])map[k]={marka:r.marka,aad:r.aad,akg:r.akg,adet:0};
     map[k].adet+=r.adet;
   });
-  tb.innerHTML='';
+  var h='';
   var vals=Object.values(map).filter(function(r){return r.adet>0;});
   if(!vals.length){tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--brm)">Depo boş</td></tr>';return;}
   vals.forEach(function(r){
-    tb.innerHTML+='<tr><td>'+r.marka+'</td><td>'+r.aad+'</td><td class="r">'+r.adet.toLocaleString('tr-TR')+'</td><td class="r">'+fkg(r.adet*r.akg)+'</td></tr>';
+    h+='<tr><td>'+r.marka+'</td><td>'+r.aad+'</td><td class="r">'+r.adet.toLocaleString('tr-TR')+'</td><td class="r">'+fkg(r.adet*r.akg)+'</td></tr>';
   });
+  tb.innerHTML=h;
 }
 
 function rDash(){
@@ -1894,19 +1896,21 @@ function rDash(){
 
 function rDashAmb(){
   var tb=g('D_amb'); if(!tb)return;
-  tb.innerHTML='';
+  var h='';
   S.amb.forEach(function(a){
-    tb.innerHTML+='<tr><td>'+a.ad+'</td><td class="r">'+a.kg+'</td><td><span class="bdg bgd">'+a.tip+'</span></td><td class="r">'+a.stok.toLocaleString('tr-TR')+'</td></tr>';
+    h+='<tr><td>'+a.ad+'</td><td class="r">'+a.kg+'</td><td><span class="bdg bgd">'+a.tip+'</span></td><td class="r">'+a.stok.toLocaleString('tr-TR')+'</td></tr>';
   });
   if(!S.amb.length) tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--brm)">Kayıt yok</td></tr>';
+  tb.innerHTML=h;
 }
 function rDashKat(){
   var tb=g('D_kat'); if(!tb)return;
-  tb.innerHTML='';
+  var h='';
   S.kat.forEach(function(k){
-    tb.innerHTML+='<tr><td>'+k.ad+'</td><td class="r">'+k.stok.toFixed(3)+'</td></tr>';
+    h+='<tr><td>'+k.ad+'</td><td class="r">'+k.stok.toFixed(3)+'</td></tr>';
   });
   if(!S.kat.length) tb.innerHTML='<tr><td colspan="2" style="text-align:center;color:var(--brm)">Kayıt yok</td></tr>';
+  tb.innerHTML=h;
 }
 
 // ═══════════════════════════════════════════════
@@ -1952,34 +1956,26 @@ function rSelects(){
   // Sevk depo
   var depMap={};
   S.depo.forEach(function(r){var k=r.marka+'||'+r.aad+'||'+r.akg;if(!depMap[k])depMap[k]={marka:r.marka,aad:r.aad,akg:r.akg,adet:0};depMap[k].adet+=r.adet;});
-  var suEl=g('su_urun'); if(suEl){
-    var cur=suEl.value; suEl.innerHTML='<option value="">Seçin...</option>';
-    Object.keys(depMap).forEach(function(k){
-      var v=depMap[k]; if(v.adet<=0)return;
-      var op=document.createElement('option'); op.value=k;
-      op.textContent=v.marka+' / '+v.aad+' — '+v.adet+' adet';
-      suEl.appendChild(op);
-    });
-    suEl.value=cur;
-  }
 }
 
 function rAmbList(){
   var tb=g('AT_list'); if(!tb)return;
-  tb.innerHTML='';
+  var h='';
   S.amb.forEach(function(a){
-    tb.innerHTML+='<tr><td>'+a.ad+'</td><td class="r">'+a.kg+'</td><td><span class="bdg bgd">'+a.tip+'</span></td><td class="r">'+a.stok.toLocaleString('tr-TR')+'</td>'
+    h+='<tr><td>'+a.ad+'</td><td class="r">'+a.kg+'</td><td><span class="bdg bgd">'+a.tip+'</span></td><td class="r">'+a.stok.toLocaleString('tr-TR')+'</td>'
       +'<td class="a"><button class="btn bbr bsm" onclick="editAmb(\''+a.id+'\')">✏️</button> <button class="btn bred bsm" onclick="delAmb(\''+a.id+'\')">🗑</button></td></tr>';
   });
+  tb.innerHTML=h;
 }
 
 function rKatList(){
   var tb=g('KT_list'); if(!tb)return;
-  tb.innerHTML='';
+  var h='';
   S.kat.forEach(function(k){
-    tb.innerHTML+='<tr><td>'+k.ad+'</td><td class="r">'+k.stok.toFixed(3)+'</td>'
+    h+='<tr><td>'+k.ad+'</td><td class="r">'+k.stok.toFixed(3)+'</td>'
       +'<td class="a"><button class="btn bbr bsm" onclick="editKat(\''+k.id+'\')">✏️</button> <button class="btn bred bsm" onclick="delKat(\''+k.id+'\')">🗑</button></td></tr>';
   });
+  tb.innerHTML=h;
 }
 
 function eb(lk,rid){ return '<button class="btn bbr bsm" onclick="editL(\''+lk+'\',\''+rid+'\')">✏️</button> <button class="btn bred bsm" onclick="delL(\''+lk+'\',\''+rid+'\')">🗑</button>'; }
@@ -2692,22 +2688,7 @@ function doPak(tip){
 // ═══════════════════════════════════════════════
 // SEVKİYAT
 // ═══════════════════════════════════════════════
-function suStok(){
-  var key=gv('su_urun'), oz=g('su_oz'); if(!oz)return;
-  if(!key){oz.textContent='';return;}
-  var map={};
-  S.depo.forEach(function(r){var k=r.marka+'||'+r.aad+'||'+r.akg;if(!map[k])map[k]={marka:r.marka,aad:r.aad,akg:r.akg,adet:0};map[k].adet+=r.adet;});
-  var st=map[key];
-  oz.textContent=st?'Depoda: '+st.adet.toLocaleString('tr-TR')+' adet / '+fkg(st.adet*st.akg):'';
-}
-
-// ═══════════════════════════════════════════════
-// SEVKİYAT — ÇOKLU ÜRÜN SİSTEMİ
-// ═══════════════════════════════════════════════
-
-// Sepet: [{tip, urun, anahtar, miktar, birimFiyat, toplamTutar, x}]
-var _svSepet = [];
-
+function suStok(){}
 function svTipGoster(tip){
   var panUn  = g('sv_stok_un');
   var panYan = g('sv_stok_yan');
