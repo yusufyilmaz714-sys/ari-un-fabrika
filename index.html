@@ -400,6 +400,37 @@ hr{border:none;border-top:1px solid var(--brm);margin:14px 0}
   nav button{font-size:.67rem;padding:9px 10px}
   .btn{font-size:.82rem;padding:11px 14px}
 }
+/* Chatbot mesaj stilleri */
+.chat-user{
+  align-self:flex-end;
+  background:linear-gradient(135deg,#1b4f72,#2e86c1);
+  color:#fff;padding:8px 12px;border-radius:14px 14px 2px 14px;
+  font-size:.82rem;max-width:85%;line-height:1.4;word-break:break-word;
+}
+.chat-ai{
+  align-self:flex-start;
+  background:var(--an);border:1px solid var(--brm);
+  color:var(--crm);padding:8px 12px;border-radius:14px 14px 14px 2px;
+  font-size:.82rem;max-width:90%;line-height:1.5;word-break:break-word;
+}
+.chat-ai b{color:var(--gd);}
+.chat-loading{
+  align-self:flex-start;padding:8px 12px;
+  color:var(--brm);font-size:.8rem;font-style:italic;
+}
+.chat-hizli{
+  display:flex;flex-wrap:wrap;gap:5px;padding:4px 0;
+}
+.chat-hizli button{
+  font-size:.72rem;padding:4px 10px;border-radius:12px;
+  border:1px solid var(--brm);background:transparent;
+  color:var(--crm);cursor:pointer;transition:all .15s;
+}
+.chat-hizli button:hover{background:var(--an);border-color:var(--gd);color:var(--gd);}
+@media(max-width:600px){
+  #chat_win{width:calc(100vw - 24px);right:12px;bottom:76px;}
+  #chat_btn{bottom:16px;right:16px;}
+}
 @media print{
   body,html{margin:0;padding:0;background:#fff!important;color:#1a1a1a!important}
   header,nav,main,.mb{display:none!important}
@@ -2078,6 +2109,7 @@ function rAll(){
   if(aktif==='uretim'){
     rUrSilos();
     rYkSilos();
+    rSelects();
     // Üretim geçmişi
     var ugk=g('ur_gecmis_kart');
     if(ugk&&ugk.style.display!=='none') rLogTablo('UR_log',S.log.ur,_urLogFn);
@@ -2123,6 +2155,192 @@ function rAll(){
   }
 }
 
+
+// ═══════════════════════════════════════════════
+// AI CHATBOT
+// ═══════════════════════════════════════════════
+var _chatAcik = false;
+var _chatGecmis = []; // {role, content}
+var _chatYukleniyor = false;
+
+function chatToggle(){
+  _chatAcik = !_chatAcik;
+  var win = g('chat_win');
+  var dot = g('chat_dot');
+  if(win) win.style.display = _chatAcik ? 'flex' : 'none';
+  if(dot) dot.style.display = 'none';
+  if(_chatAcik){
+    // İlk açılışta hoşgeldin mesajı
+    if(_chatGecmis.length === 0){
+      chatMesajEkle('ai','Merhaba! Ben Arı Un Fabrikasının AI asistanıyım.\n\nStok durumu, üretim verileri ve sevkiyat kayıtları hakkında soru sorabilirsiniz.');
+      chatHizliButonlar([
+        'Stok durumu nedir?',
+        'Bugün ne kadar üretim var?',
+        'Kepek ve razmol stokları?',
+        'Son sevkiyatlar?'
+      ]);
+    }
+    setTimeout(function(){ var el=g('chat_inp'); if(el)el.focus(); }, 100);
+  }
+}
+
+function chatMesajEkle(kim, metin){
+  var msgs = g('chat_msgs'); if(!msgs) return;
+  var div = document.createElement('div');
+  div.className = kim === 'user' ? 'chat-user' : 'chat-ai';
+  // Satır sonlarını <br> yap, **bold** destekle
+  var html = metin
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')
+    .split('\n').join('<br>');
+  div.innerHTML = html;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function chatHizliButonlar(sorular){
+  var msgs = g('chat_msgs'); if(!msgs) return;
+  var wrap = document.createElement('div');
+  wrap.className = 'chat-hizli';
+  sorular.forEach(function(s){
+    var btn = document.createElement('button');
+    btn.textContent = s;
+    btn.onclick = function(){
+      wrap.remove();
+      chatSor(s);
+    };
+    wrap.appendChild(btn);
+  });
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function chatGonder(){
+  if(_chatYukleniyor) return;
+  var inp = g('chat_inp'); if(!inp) return;
+  var soru = inp.value.trim(); if(!soru) return;
+  inp.value = '';
+  chatSor(soru);
+}
+
+// Mevcut fabrika verilerini özetle — AI'ya context olarak gönderilir
+function chatVeriOzeti(){
+  var topFab=0; S.fab.forEach(function(s){topFab+=s.kg;});
+  var dolSilolar=S.fab.filter(function(s){return s.kg>0;});
+  var topDis=0; S.dis.forEach(function(s){topDis+=s.kg;});
+  var yk=S.yikama||{kg:0};
+  var topUnSilo=0; Object.keys(S.un).forEach(function(k){topUnSilo+=S.un[k];});
+  var topDepo=0; var depoGrp={};
+  S.depo.forEach(function(r){
+    var k=r.marka+'/'+r.aad;
+    if(!depoGrp[k])depoGrp[k]={adet:0,kg:0};
+    depoGrp[k].adet+=r.adet; depoGrp[k].kg+=r.adet*r.akg;
+    topDepo+=r.adet*r.akg;
+  });
+  var NL='|';
+  var sonUretim=S.log.ur.slice(-10).reverse().map(function(r){
+    return r.t+': '+fkg(r.bkg)+' bugday - '+r.u1m+' '+fkg(r.u1k)+(r.u2m?' + '+r.u2m+' '+fkg(r.u2k):'');
+  }).join(NL)||'Kayit yok';
+  var sonSevk=S.log.sv.slice(-10).reverse().map(function(r){
+    return r.t+': '+r.alici+' - '+r.urun+' '+r.miktar+(r.toplamTutar?' ('+r.toplamTutar.toLocaleString('tr-TR',{minimumFractionDigits:2})+' TL)':'')+(r.vade?' Vade:'+r.vade+'gun':'');
+  }).join(NL)||'Kayit yok';
+  var bugun=new Date();
+  var vadeli=S.log.sv.filter(function(r){return r.vade>0;}).map(function(r){
+    var tah=vadeTarihiHesapla(r.t,r.vade);
+    var fark=tah?Math.round((tah-bugun)/(1000*60*60*24)):999;
+    return {r:r,fark:fark};
+  }).filter(function(x){return x.fark<=30;}).sort(function(a,b){return a.fark-b.fark;});
+  var tahStr=vadeli.length>0?vadeli.slice(0,5).map(function(x){
+    return (x.fark<0?'GECMIS':'YAKLASAN')+'('+x.fark+' gun) '+x.r.alici+' '+(x.r.toplamTutar||0).toLocaleString('tr-TR',{minimumFractionDigits:2})+' TL';
+  }).join(NL):'Yok';
+
+  return 'FABRIKA VERILERI OZETI'
+    +' | BUGDAY SILOLARI: Fabrika='+fkg(topFab)+', Yikama='+fkg(yk.kg)+', Dis='+fkg(topDis)
+    +' | DOLU SILOLAR: '+dolSilolar.map(function(s){return s.id+(s.nm?' ('+s.nm+')':'')+':'+fkg(s.kg);}).join(', ')
+    +' | UN SILO: '+( Object.keys(S.un).filter(function(k){return S.un[k]>0;}).map(function(k){return k+':'+fkg(S.un[k]);}).join(', ')||'Bos')
+    +' (Toplam:'+fkg(topUnSilo)+')'
+    +' | UN DEPO: '+(Object.keys(depoGrp).map(function(k){return k+':'+depoGrp[k].adet+'adet('+fkg(depoGrp[k].kg)+')';}).join(', ')||'Bos')
+    +' (Toplam:'+fkg(topDepo)+')'
+    +' | YAN MAMUL: Kepek silo='+fkg(S.ks)+' cuval='+fkg(S.kc)+', Razmol silo='+fkg(S.rs)+' cuval='+fkg(S.rc)+', Bonkalite='+fkg(S.bk)+', Kirik='+fkg(S.kb)
+    +' | AMBALAJ: '+(S.amb.map(function(a){return a.ad+':'+a.stok+'adet';}).join(', ')||'Yok')
+    +' | KATKI: '+(S.kat.map(function(k){return k.ad+':'+k.stok.toFixed(3)+'kg';}).join(', ')||'Yok')
+    +' | SON URETIMLER: '+sonUretim
+    +' | SON SEVKIYATLAR: '+sonSevk
+    +' | YAKLASHAN TAHSILATLAR: '+tahStr;
+}
+
+function chatSor(soru){
+  if(_chatYukleniyor) return;
+  _chatYukleniyor = true;
+
+  chatMesajEkle('user', soru);
+  _chatGecmis.push({role:'user', content:soru});
+
+  // Yükleniyor göstergesi
+  var msgs = g('chat_msgs');
+  var loadDiv = document.createElement('div');
+  loadDiv.className = 'chat-loading';
+  loadDiv.innerHTML = '⏳ Düşünüyor...';
+  if(msgs){ msgs.appendChild(loadDiv); msgs.scrollTop=msgs.scrollHeight; }
+
+  // Gönder butonu devre dışı
+  var sendBtn = g('chat_send'); if(sendBtn) sendBtn.style.opacity='0.5';
+
+  // Sistem promptu — her sorguda güncel veri ile
+  var sistemPrompt = "Sen Ari Un Fabrikasinim AI asistanisin. YALNIZCA Turkce konusursun. YALNIZCA asagidaki fabrika verileri hakkinda yardim edersin. Kisa ve net cevaplar ver. Onemli sayilari **kalin** yaz. Fabrika disi konularda yalnizca fabrika verileri hakkinda yardimci olabilecegini belirt.\n\n" + chatVeriOzeti();
+
+  // Mesaj geçmişi — son 6 mesaj (token tasarrufu)
+  var gecmisKisa = _chatGecmis.slice(-6);
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:600,
+      system: sistemPrompt,
+      messages: gecmisKisa
+    })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(loadDiv && loadDiv.parentNode) loadDiv.remove();
+    if(sendBtn) sendBtn.style.opacity='1';
+    _chatYukleniyor = false;
+
+    var cevap = '';
+    if(data.content && data.content[0] && data.content[0].text){
+      cevap = data.content[0].text;
+    } else if(data.error){
+      cevap = '❌ Hata: '+data.error.message;
+    } else {
+      cevap = '❌ Beklenmeyen bir hata oluştu.';
+    }
+
+    _chatGecmis.push({role:'assistant', content:cevap});
+    chatMesajEkle('ai', cevap);
+
+    // Bağlamsal hızlı butonlar
+    var hizli = [];
+    if(soru.toLowerCase().includes('stok')||soru.toLowerCase().includes('buğday')){
+      hizli = ['Silo detayı?','Un stokları?','Yan mamül?'];
+    } else if(soru.toLowerCase().includes('üretim')){
+      hizli = ['Bu hafta üretim?','Randıman ne?','Son üretimler?'];
+    } else if(soru.toLowerCase().includes('sevk')||soru.toLowerCase().includes('satış')){
+      hizli = ['En çok alan müşteri?','Tahsilatlar?','Son sevkiyatlar?'];
+    } else {
+      hizli = ['Stok durumu?','Son üretimler?','Yaklaşan tahsilatlar?'];
+    }
+    chatHizliButonlar(hizli);
+  })
+  .catch(function(err){
+    if(loadDiv && loadDiv.parentNode) loadDiv.remove();
+    if(sendBtn) sendBtn.style.opacity='1';
+    _chatYukleniyor = false;
+    chatMesajEkle('ai','❌ Bağlantı hatası: '+err.message);
+  });
+}
 
 // ═══════════════════════════════════════════════
 // SATIN ALMA
@@ -4871,5 +5089,65 @@ sv = function(){
   window.S = S;
 };
 </script>
+
+<!-- ══ AI CHATBOT ══ -->
+<!-- Yüzen buton -->
+<button id="chat_btn" onclick="chatToggle()" title="AI Asistan" style="
+  position:fixed;bottom:22px;right:22px;z-index:1000;
+  width:52px;height:52px;border-radius:50%;border:none;
+  background:linear-gradient(135deg,#1b4f72,#2e86c1);
+  color:#fff;font-size:1.4rem;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .2s;
+" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+  🤖
+</button>
+<div id="chat_dot" style="
+  position:fixed;bottom:60px;right:22px;z-index:1001;
+  background:#e53935;color:#fff;border-radius:50%;
+  width:18px;height:18px;font-size:.62rem;font-weight:700;
+  display:none;align-items:center;justify-content:center;
+">!</div>
+
+<!-- Chat penceresi -->
+<div id="chat_win" style="
+  position:fixed;bottom:84px;right:22px;z-index:999;
+  width:340px;max-height:520px;
+  background:var(--an2);border:1px solid var(--brm);
+  border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:none;flex-direction:column;overflow:hidden;
+">
+  <!-- Başlık -->
+  <div style="background:linear-gradient(135deg,#1b4f72,#2e86c1);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="color:#fff;font-weight:700;font-size:.9rem">🤖 Arı Un Asistanı</div>
+      <div style="color:rgba(255,255,255,.7);font-size:.7rem">Fabrika verilerinizi analiz eder</div>
+    </div>
+    <button onclick="chatToggle()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:.8rem">✕</button>
+  </div>
+
+  <!-- Mesajlar -->
+  <div id="chat_msgs" style="
+    flex:1;overflow-y:auto;padding:12px;
+    display:flex;flex-direction:column;gap:8px;
+    min-height:260px;max-height:360px;
+  "></div>
+
+  <!-- Input -->
+  <div style="padding:10px 12px;border-top:1px solid var(--brm);display:flex;gap:8px">
+    <input id="chat_inp" type="text" placeholder="Sorunuzu yazın..."
+      style="flex:1;padding:8px 12px;border:1px solid var(--brm);border-radius:20px;
+        background:var(--an);color:var(--crm);font-size:.82rem;outline:none"
+      onkeydown="if(event.key==='Enter')chatGonder()">
+    <button onclick="chatGonder()" id="chat_send" style="
+      background:linear-gradient(135deg,#1b4f72,#2e86c1);
+      border:none;color:#fff;border-radius:50%;
+      width:36px;height:36px;cursor:pointer;font-size:.9rem;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0
+    ">➤</button>
+  </div>
+</div>
+
 </body>
 </html>
