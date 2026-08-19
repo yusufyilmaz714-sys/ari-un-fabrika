@@ -39,7 +39,9 @@
       _saving = true;
       fbSetStatus('saving');
       try {
-        var payload = { data: JSON.stringify(window.S), ts: Date.now() };
+        var jsonData = JSON.stringify(window.S);
+        _myLastSave = jsonData; // ÖNCE güncelle — onSnapshot gelirse yoksayılsın
+        var payload = { data: jsonData, ts: Date.now() };
         setDoc(STATE_DOC, payload)
           .then(function(){
             _saving = false;
@@ -47,9 +49,9 @@
           })
           .catch(function(e){
             _saving = false;
+            _myLastSave = ''; // Hata olursa sıfırla
             console.error('Kayıt hatası:', e);
             fbSetStatus('err');
-            // 5 saniye sonra tekrar dene
             setTimeout(window.fbSave, 5000);
           });
       } catch(e){ _saving=false; fbSetStatus('err'); }
@@ -71,14 +73,28 @@
         var remoteData = snap.data().data;
         // Kendi kaydettiğimiz veri geldiyse yoksay
         if(remoteData === _myLastSave) return;
-        // Kayıt devam ediyorsa yoksay
-        if(_saving) return;
+        // Kayıt devam ediyorsa veya kayıt bekleniyorsa yoksay
+        if(_saving || _saveTimer) return;
         try {
           var parsed = JSON.parse(remoteData);
           if(!Array.isArray(parsed.fab)||parsed.fab.length!==14) return;
           parsed = fbMigrate(parsed);
+          // Snapshot mevcut S'den daha az kayıt içeriyorsa yoksay
+          // (silme/düzenleme henüz Firebase'e yazılmamış olabilir)
+          if(window.S && window.S.log) {
+            var curTotal = (window.S.log.sv||[]).length + (window.S.log.sa||[]).length
+              + (window.S.log.bd||[]).length + (window.S.log.ur||[]).length
+              + (window.S.log.pk||[]).length;
+            var newTotal = ((parsed.log&&parsed.log.sv)||[]).length
+              + ((parsed.log&&parsed.log.sa)||[]).length
+              + ((parsed.log&&parsed.log.bd)||[]).length
+              + ((parsed.log&&parsed.log.ur)||[]).length
+              + ((parsed.log&&parsed.log.pk)||[]).length;
+            if(newTotal < curTotal) return; // Daha eski veri — yoksay
+          }
           window.S = parsed;
           _myLastSave = remoteData;
+          if(typeof _rLogCache !== 'undefined') _rLogCache = {};
           if(window.rAll) window.rAll();
           fbSetStatus('sync');
         } catch(e){ console.warn('Snapshot parse:', e); }
@@ -3213,6 +3229,11 @@ function delL(lk,rid){
 
   S.log[lk]=S.log[lk].filter(function(x){return x.id!==rid;});
   rLogReset(); sv(); rAll();
+  // Kritik işlem: debounce'u bypass et, hemen kaydet
+  if(window.fbSave){
+    if(window._fbSaveTimer) clearTimeout(window._fbSaveTimer);
+    window.fbSave();
+  }
 }
 
 
@@ -4872,6 +4893,5 @@ sv = function(){
   window.S = S;
 };
 </script>
-
 </body>
 </html>
