@@ -8,7 +8,7 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence }
+  import { getFirestore, doc, setDoc, onSnapshot }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -24,10 +24,7 @@
   const db   = getFirestore(app);
   const STATE_DOC = doc(db, 'ari-un-fabrika', 'state');
 
-  // Offline cache — internet kesilince son veri korunur
-  enableIndexedDbPersistence(db).catch(function(e){
-    console.warn('Offline persistence:', e.code);
-  });
+
 
   // ── Kayıt (debounce 1.5s) ────────────────────────
   let _saving=false, _saveTimer=null;
@@ -79,19 +76,7 @@
           var parsed = JSON.parse(remoteData);
           if(!Array.isArray(parsed.fab)||parsed.fab.length!==14) return;
           parsed = fbMigrate(parsed);
-          // Snapshot mevcut S'den daha az kayıt içeriyorsa yoksay
-          // (silme/düzenleme henüz Firebase'e yazılmamış olabilir)
-          if(window.S && window.S.log) {
-            var curTotal = (window.S.log.sv||[]).length + (window.S.log.sa||[]).length
-              + (window.S.log.bd||[]).length + (window.S.log.ur||[]).length
-              + (window.S.log.pk||[]).length;
-            var newTotal = ((parsed.log&&parsed.log.sv)||[]).length
-              + ((parsed.log&&parsed.log.sa)||[]).length
-              + ((parsed.log&&parsed.log.bd)||[]).length
-              + ((parsed.log&&parsed.log.ur)||[]).length
-              + ((parsed.log&&parsed.log.pk)||[]).length;
-            if(newTotal < curTotal) return; // Daha eski veri — yoksay
-          }
+          // Snapshot kayit sayisi korumasi kaldirildi
           window.S = parsed;
           _myLastSave = remoteData;
           if(typeof _rLogCache !== 'undefined') _rLogCache = {};
@@ -1836,7 +1821,7 @@ function rYan(cid){
     +'<div class="stat"><div class="v">'+fkg(S.kb)+'</div><div class="l">Kırık Buğday</div></div>';
 }
 
-function svPanelGoster(tip){ svTipGoster(tip); }
+
 
 function rSVYan(){
   var c=g('SV_yan'); if(!c)return;
@@ -2705,7 +2690,7 @@ function doPak(tip){
 // ═══════════════════════════════════════════════
 // SEVKİYAT
 // ═══════════════════════════════════════════════
-function suStok(){}
+
 function svTipGoster(tip){
   var panUn  = g('sv_stok_un');
   var panYan = g('sv_stok_yan');
@@ -4390,12 +4375,17 @@ function printSevkRapor(){
   var temMap={}, topGenel=0, topAdetGenel=0;
   liste.forEach(function(r){
     var tem=r.temsilci||'Belirtilmemiş';
-    if(!temMap[tem])temMap[tem]={tem:tem,rows:[],topTutar:0,topAdet:0,fxm:0};
+    if(!temMap[tem])temMap[tem]={tem:tem,rows:[],topTutar:0,topAdet:0,fxm:0,unKg:0,yanKg:0};
     var adet=r.x&&r.x.adet?r.x.adet:(r.x&&r.x.kg?r.x.kg:0);
+    var svKgStr=r.miktar||'';
+    var svKgM=svKgStr.match(/([\d.,]+)\s*[Kk]g/);
+    var svKgV=svKgM?parseFloat(svKgM[1].replace(/\./g,'').replace(',','.'))||0:0;
     temMap[tem].rows.push({t:r.t,tip:r.tip,urun:r.urun,alici:r.alici||'—',miktar:r.miktar,fiy:r.birimFiyat||0,tut:r.toplamTutar||0,adet:adet});
     temMap[tem].topTutar+=r.toplamTutar||0;
     temMap[tem].topAdet+=adet;
     if((r.birimFiyat||0)>0&&adet>0)temMap[tem].fxm+=(r.birimFiyat||0)*adet;
+    if(r.tip==='Un (Depo)'||r.tip==='Un (Paket)')temMap[tem].unKg+=svKgV;
+    else temMap[tem].yanKg+=svKgV;
     topGenel+=r.toplamTutar||0; topAdetGenel+=adet;
   });
   var css='*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:9.5pt;color:#1a1a1a}'
@@ -4424,7 +4414,7 @@ function printSevkRapor(){
     +'<div class="ok"><div class="okv">'+topAdetGenel.toLocaleString('tr-TR')+'</div><div class="okl">Toplam Adet/Kg</div></div>'
     +'<div class="ok"><div class="okv" style="font-size:10pt">'+topGenel.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</div><div class="okl">Genel Toplam</div></div>'
     +'</div>';
-  var bolumler='';
+  var bolumler='',genelUnKg=0,genelYanKg=0;
   Object.values(temMap).forEach(function(tm){
     var ortFiy=tm.topAdet>0?tm.fxm/tm.topAdet:0;
     var rows=tm.rows.map(function(k){
@@ -4437,6 +4427,7 @@ function printSevkRapor(){
         +'<td class="r" style="color:#1b4f72">'+(k.tut>0?k.tut.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺':'—')+'</td>'
         +'</tr>';
     }).join('');
+    genelUnKg+=tm.unKg; genelYanKg+=tm.yanKg;
     bolumler+='<div class="bolum">'
       +'<div class="bb">Temsilci: '+tm.tem
         +'<span class="bbs">'+tm.rows.length+' satış &nbsp;|&nbsp; Ort: '+(ortFiy>0?ortFiy.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺':'—')+' &nbsp;|&nbsp; '+tm.topTutar.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</span>'
@@ -4446,7 +4437,11 @@ function printSevkRapor(){
         +'<th class="r">Miktar</th><th class="r">Birim Fiyat</th><th class="r">Tutar</th>'
       +'</tr></thead><tbody>'
       +rows
-      +'<tr class="tot"><td colspan="6">'+tm.tem+' Toplam</td>'
+      +'<tr class="tot">'
+        +'<td colspan="3">'+tm.tem+' Toplam</td>'
+        +'<td style="font-size:8pt">Un: <b>'+tm.unKg.toLocaleString('tr-TR',{maximumFractionDigits:0})+' Kg</b></td>'
+        +'<td style="font-size:8pt">Yan: <b>'+tm.yanKg.toLocaleString('tr-TR',{maximumFractionDigits:0})+' Kg</b></td>'
+        +'<td></td>'
         +'<td class="r">'+tm.topTutar.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</td>'
       +'</tr></tbody></table></div>';
   });
@@ -4455,8 +4450,13 @@ function printSevkRapor(){
     +'<div class="rh"><div class="rlogo">Arı Un Fabrikası<small>San. Tic. A.Ş. — Sevkiyat Raporu</small></div>'
     +'<div class="rmeta"><div class="rt">'+aralik+'</div><div>'+tarihStr+' '+saatStr+'</div></div></div>'
     +ozet+bolumler
-    +'<table><tbody><tr class="gtot"><td colspan="6">GENEL TOPLAM ('+liste.length+' sevkiyat)</td>'
-      +'<td class="r">'+topGenel.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</td></tr></tbody></table>'
+    +'<table><tbody><tr class="gtot">'
+      +'<td colspan="3">GENEL TOPLAM ('+liste.length+' sevkiyat)</td>'
+      +'<td style="font-size:8pt;color:#fff">Un: <b>'+genelUnKg.toLocaleString('tr-TR',{maximumFractionDigits:0})+' Kg</b></td>'
+      +'<td style="font-size:8pt;color:#fff">Yan: <b>'+genelYanKg.toLocaleString('tr-TR',{maximumFractionDigits:0})+' Kg</b></td>'
+      +'<td></td>'
+      +'<td class="r">'+topGenel.toLocaleString('tr-TR',{minimumFractionDigits:2})+' ₺</td>'
+      +'</tr></tbody></table>'
     +'<div class="imza"><div class="iz"><div class="izc"></div>Hazırlayan</div>'
       +'<div class="iz"><div class="izc"></div>Kontrol Eden</div>'
       +'<div class="iz"><div class="izc"></div>Onaylayan</div></div>'
